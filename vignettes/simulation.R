@@ -1,0 +1,15 @@
+library(readxl)
+library(Matrix)
+library(fattvpVAR)
+library(profvis)
+library(invgamma)
+
+datagenG <- sim.tvpVAR.SV(dist="Gaussian")
+plot(datagenG$y[,1])
+# datagenS <- sim.tvpVAR.SV(dist="Student")
+# plot(datagenS$y[,1])
+#
+# datagenG <- sim.tvpVAR.nonSV(dist="Gaussian")
+# plot(datagenG$y[,1])
+# datagenS <- sim.tvpVAR.nonSV(dist="Student")
+# plot(datagenS$y[,1])

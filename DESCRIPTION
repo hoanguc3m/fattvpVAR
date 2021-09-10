@@ -1,11 +1,30 @@
 Package: fattvpVAR
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Time-varying parameter VAR with Stochastic volatility and fat tails
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Authors@R: person("Nguyen", "Hoang", role = c("aut", "cre"), email = "hoang.nguyen@oru.se")
+Maintainer: Hoang Nguyen <hoang.nguyen@oru.se>
+Description: Time-varying parameter VAR with Stochastic volatility and fat tails
+License: License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
+Imports:
+    Rcpp (>= 0.12.8), RcppArmadillo
+Depends:
+    R (>= 3.5.0),
+    Rcpp,
+    matrixcalc,
+    Matrix,
+    coda,
+    invgamma,
+    mvnfast,
+    fitdistrplus,
+    KernSmooth,
+    ash,
+    ghyp,
+    stochvol
+LinkingTo: Rcpp, RcppArmadillo
+RoxygenNote: 7.1.1
+Suggests: knitr,
+    rmarkdown
+VignetteBuilder: knitr
