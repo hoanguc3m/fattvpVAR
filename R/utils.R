@@ -30,6 +30,11 @@ repcol<-function(x,n){
 }
 
 #' @export
+adaptamount <- function(iteration){
+  return( min( 0.01, 1.0 / sqrt(iteration) ) );
+}
+
+#' @export
 B0_mat <- function(b0, K, p){
   # matrix coefficient B
   B0 <- cbind(rep(0,K))

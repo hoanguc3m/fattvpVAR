@@ -21,7 +21,7 @@
 #' y <- datagen$y
 #' }
 sim.tvpVAR.SV <- function(dist, K = 3, p = 2, t_max = 1000,
-                       b0 = 0.5, a0 = 0.5, h = 0, sigma_ab = NULL, sigma_h = NULL,
+                       b0 = 0.5, a0 = 0.5, h = -3, sigma_ab = NULL, sigma_h = NULL,
                        y0 = matrix(0, ncol = K, nrow = p),
                        nu = 6, is_tv = NULL,
                        seednum = 0, burn_in = 0){
@@ -58,11 +58,13 @@ sim.tvpVAR.Gaussian.SV <- function(K = 3, p = 2, t_max = 1000,
   if (is.null(sigma_h)){
     Vh <- seq(1e-2, 1e-2, length.out = K)
   } else {
-    Vh <-  sigma_h
+    Vh <-  rep(sigma_h,K)
   }
 
   if (is.null(sigma_ab)){
     V_ab <- (2e-3)
+  } else {
+    V_ab <- sigma_ab
   }
 
   if (is.null(is_tv)){
@@ -115,7 +117,7 @@ sim.tvpVAR.Gaussian.SV <- function(K = 3, p = 2, t_max = 1000,
        y0 = y0, y_mean = y_mean, y_var = y_var, volatility = volatility,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
-       Vh = Vh,
+       Vh = Vh, B_t = B_t, A_t = A_t, H_t = H_t,
        dist = "Gaussian", SV = TRUE)
 }
 
@@ -147,11 +149,13 @@ sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
   if (is.null(sigma_h)){
     Vh <- seq(1e-2, 1e-2, length.out = K)
   } else {
-    Vh <-  sigma_h
+    Vh <-  rep(sigma_h,K)
   }
 
   if (is.null(sigma_ab)){
     V_ab <- (2e-3)
+  } else {
+    V_ab <- sigma_ab
   }
 
   if (is.null(is_tv)){
@@ -206,7 +210,7 @@ sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
        nu = nu, w = w_t[(burn_in+1):(burn_in+t_max)],
-       Vh = Vh,
+       Vh = Vh, B_t = B_t, A_t = A_t, H_t = H_t,
        dist = "Student", SV = TRUE)
 }
 
@@ -322,7 +326,7 @@ sim.tvpVAR.Gaussian.nonSV <- function(K = 3, p = 2, t_max = 1000,
        y0 = y0, y_mean = y_mean, y_var = y_var, volatility = volatility,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
-       h = h,
+       h = h, B_t = B_t, A_t = A_t, H_t = H_t,
        dist = "Gaussian", SV = FALSE)
 }
 
@@ -407,6 +411,6 @@ sim.tvpVAR.Student.nonSV <- function(K = 3, p = 2, t_max = 1000,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
        nu = nu, w = w_t[(burn_in+1):(burn_in+t_max)],
-       h = h,
+       h = h, B_t = B_t, A_t = A_t, H_t = H_t,
        dist = "Student", SV = FALSE)
 }

@@ -15,7 +15,8 @@ priors <- list(  hyper_ab = 1,
 p <- 3 # number of lags
 atT <- 815
 
-y <- data.matrix(dataraw[1:atT,c(2:4)])
-
-hybrid_tvpsvfunc(y, p, priors, inits)
+y <- data.matrix(dataraw[(p+1):atT,c(2:4)])
+y0 <- data.matrix(dataraw[1:p,c(2:4)])
+G111_obj <- GaussTVPSV(y, y0, p, priors, inits)
+T111_obj <- StudentTVPSV(y, y0, p, priors, inits)
 
