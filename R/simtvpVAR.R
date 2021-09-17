@@ -209,7 +209,7 @@ sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
        y0 = y0, y_mean = y_mean, y_var = y_var, volatility = volatility,
        K = K, p = p, t_max = t_max,
        A0 = A0, B0 = matrix(B0, nrow = K),
-       nu = nu, w = w_t[(burn_in+1):(burn_in+t_max)],
+       nu = rep(nu,K), w = w_t[(burn_in+1):(burn_in+t_max),],
        Vh = Vh, B_t = B_t, A_t = A_t, H_t = H_t,
        dist = "Student", SV = TRUE)
 }
