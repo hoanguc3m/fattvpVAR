@@ -335,6 +335,7 @@ StudentTVPSV <- function(y, y0, p, priors, inits){
                  store_Sigbeta = store_Sigbeta, store_Sigalp = store_Sigalp, store_Sigh = store_Sigh,
                  store_beta0 = store_beta0, store_alp0 = store_alp0, store_h0 = store_h0,
                  store_nu = store_nu, store_w = store_w,
+                 data = list(y = y, y0 = y0, p = p, priors = priors, inits = inits),
                  class = "GaussTVPSV")
   return(output)
 }

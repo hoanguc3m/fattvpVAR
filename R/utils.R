@@ -90,3 +90,20 @@ Sigma_sample <- function(Beta, Beta0, Sigma_Beta, Prior_Beta, t_max){
   }
   return(Sigma_Beta)
 }
+
+
+
+#' @export
+Normal_approx <- function(mcmc_sample, ndraws){
+  mcmc_mean <- apply(mcmc_sample, 2, mean)
+  mcmc_Sigma <- cov(mcmc_sample)
+  nElements <- length(mcmc_mean)
+
+  new_samples <- mvnfast::rmvn(ndraws, mu = mcmc_mean, sigma = mcmc_Sigma)
+  colnames(new_samples) <- colnames(mcmc_sample)
+  sum_log_prop <- mvnfast::dmvn(X = new_samples,
+                                mu = as.numeric(mcmc_mean), sigma = mcmc_Sigma, log = T)
+  return(list(new_samples = new_samples,
+              sum_log_prop = sum_log_prop))
+}
+

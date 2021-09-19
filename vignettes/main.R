@@ -8,7 +8,7 @@ dataraw <- read_excel("/home/hoanguc3m/MEGA/HybridVAR/EconLetter/temp/Data210324
 inits <- list(samples = 10000,
               burnin = 1000,
               thin = 1,
-              is_tv = c(1,1,1) )
+              is_tv = c(0,0,0) )
 priors <- list(  hyper_ab = 1,
                  hyper_h = 1)
 
@@ -20,3 +20,4 @@ y0 <- data.matrix(dataraw[1:p,c(2:4)])
 G111_obj <- GaussTVPSV(y, y0, p, priors, inits)
 T111_obj <- StudentTVPSV(y, y0, p, priors, inits)
 
+G000_obj <- GaussTVPSV(y, y0, p, priors, inits)
