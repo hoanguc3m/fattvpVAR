@@ -25,7 +25,11 @@ intlike_varsv <- function(Yi,thetai,Sig_hi,bigXi,h0i){
     einvhts2 = exp(-ht)*s2
     gh = -HinvSH_h %*% (ht-alph) - 0.5*(1-einvhts2);
     Gh = -HinvSH_h -.5*sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = einvhts2)
-    newht = ht - Matrix::solve(Gh,gh)
+    # avoid problems with scaling - diag(GGh) = 1 - Sune Karlsson
+    tt = 1./sqrt(abs(Matrix::diag(Gh)));
+    GGh = tt %*% Matrix::t(tt) * Gh ;
+    newht = ht - tt * (Matrix::solve(GGh, (tt*gh)))
+    #newht = ht - Matrix::solve(Gh,gh)
     e_h = max(abs(newht-ht))
     ht = newht
     count = count + 1

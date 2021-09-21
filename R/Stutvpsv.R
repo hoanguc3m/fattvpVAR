@@ -197,10 +197,10 @@ StudentTVPSV <- function(y, y0, p, priors, inits){
         XiSig <- Matrix::t(bigXi) %*% sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-h[,ii]) / w[,ii] )
         Vthetai <- c(Vbeta0[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K),], Valp0[count_seq])
 
-        thetai0 <- c(beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
-        Kthetai <- Vthetai + XiSig %*% bigXi
-        #Kthetai <- 0.5 * ( Kthetai + t(Kthetai))
-        thetai_hat <- Matrix::solve(Kthetai, thetai0/Vthetai + XiSig %*%shortY[,ii])
+        thetai0 <- c(abeta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], aalp0[count_seq] )
+        Kthetai <- 1/Vthetai + XiSig %*% bigXi
+        Kthetai <- 0.5 * ( Kthetai + t(Kthetai))
+        thetai_hat <- Matrix::solve(Kthetai, thetai0/Vthetai + XiSig %*% shortY[,ii])
         thetai <- as.vector(thetai_hat + Matrix::solve(Matrix::chol(Kthetai) , Matrix(rnorm(ki), ncol = 1) ))
 
 

@@ -1,5 +1,6 @@
 #' @export
 ML_GaussTVPSV <- function(Chain, numCores = NULL){
+  #Chain$data = list(y = y, y0 = y0, p = p, priors = priors, inits = inits)
   data = Chain$data
   Y0 <- data$y0
   shortY <- data$y
@@ -49,7 +50,7 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
   Sigma_h_list <- Normal_approx(Chain$store_Sigh^0.5, ndraws = M) # Change to normal
   Sigma_h_gen <- Sigma_h_list$new_samples^2 # Change to square
 
-  Sigma_beta_gen <- Chain$store_Sigbeta #
+  Sigma_beta_gen <- matrix(0, ncol = ncol(Chain$store_Sigbeta), nrow = M) #
   if (sum(idx_b_tv) > 0 ){
     Sigma_beta_list <- Normal_approx(Chain$store_Sigbeta[idx_b_tv,]^0.5, ndraws = M) # Change to normal
     Sigma_beta_gen[idx_b_tv,] <- Sigma_beta_list$new_samples^2 # Change to square
@@ -57,7 +58,7 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
     Sigma_beta_list <- list(sum_log_prop = 0)
   }
 
-  Sigma_alp_gen <- Chain$store_Sigalp #
+  Sigma_alp_gen <- matrix(0, ncol = ncol(Chain$store_Sigalp), nrow = M) #
   if (sum(idx_b_tv) > 0 ){
     Sigma_alp_list <- Normal_approx(Chain$store_Sigalp[idx_a_tv,]^0.5, ndraws = M) # Change to normal
     Sigma_alp_gen[idx_a_tv,] <- Sigma_alp_list$new_samples^2 # Change to square
@@ -66,15 +67,15 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
   }
 
   # beta0, alp0, h0 approx  and obtain IS draws
-  beta0_gen <- Chain$store_beta0
+  #beta0_gen <- Chain$store_beta0
   beta0_list <- Normal_approx(Chain$store_beta0, ndraws = M)
   beta0_gen <- beta0_list$new_samples
 
-  alp0_gen <- Chain$store_alp0
+  #alp0_gen <- Chain$store_alp0
   alp0_list <- Normal_approx(Chain$store_alp0, ndraws = M)
   alp0_gen <- alp0_list$new_samples
 
-  h0_gen <- Chain$store_h0
+  #h0_gen <- Chain$store_h0
   h0_list <- Normal_approx(Chain$store_h0, ndraws = M)
   h0_gen <- h0_list$new_samples
 
@@ -104,8 +105,9 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
                            dnorm(alp0_gen, mean = aalp0, sd = sqrt(Valp0), log = T)),  MARGIN = 1, FUN = sum)
 
   #sum_log = rep(0, M);
+  RhpcBLASctl::blas_set_num_threads(1)
 
-  sum_log <- parallel::mclapply(1:M,
+  sum_log <- parallel::mclapply(1:10,
                      FUN = function(j) {
     Sigbeta = Sigma_beta_gen[j, ]
     Sigalp = Sigma_alp_gen[j, ]
@@ -130,7 +132,7 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
 
         Sigthetai = c( Sigbeta[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], Sigalp[count_seq])
         thetai0 = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
-        llikei = intlike_tvpsv(shortY[,ii],Sigthetai,Sigh[ii],bigXi,h0[ii],thetai0)
+        llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], thetai0 = thetai0)
       }  else {
         bigXi = X
         thetai = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
