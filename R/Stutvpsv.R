@@ -199,7 +199,7 @@ StudentTVPSV <- function(y, y0, p, priors, inits){
 
         thetai0 <- c(abeta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], aalp0[count_seq] )
         Kthetai <- 1/Vthetai + XiSig %*% bigXi
-        Kthetai <- 0.5 * ( Kthetai + t(Kthetai))
+        Kthetai <- 0.5 * ( Kthetai + Matrix::t(Kthetai))
         thetai_hat <- Matrix::solve(Kthetai, thetai0/Vthetai + XiSig %*% shortY[,ii])
         thetai <- as.vector(thetai_hat + Matrix::solve(Matrix::chol(Kthetai) , Matrix(rnorm(ki), ncol = 1) ))
 
@@ -228,18 +228,20 @@ StudentTVPSV <- function(y, y0, p, priors, inits){
     }
 
     # sample beta0
-    Kbeta0_tv <- Matrix::sparseMatrix(i = 1:(k_beta_div_K*n_tv),j = 1:(k_beta_div_K*n_tv),
-                              x = 1/Sigbeta[idx_b_tv] + 1/Vbeta0[idx_b_tv])
+    if (sum(idx_b_tv) > 0){
+      Kbeta0_tv <- Matrix::sparseMatrix(i = 1:(k_beta_div_K*n_tv),j = 1:(k_beta_div_K*n_tv),
+                                x = 1/Sigbeta[idx_b_tv] + 1/Vbeta0[idx_b_tv])
 
-    beta0_tv_hat <- Matrix::solve(Kbeta0_tv, (abeta0[idx_b_tv]/Vbeta0[idx_b_tv] + beta[1,idx_b_tv]/Sigbeta[idx_b_tv]) )
-    beta0[idx_b_tv] <- as.vector(beta0_tv_hat + Matrix::solve( Matrix::chol(Kbeta0_tv), rnorm(k_beta_div_K*n_tv) ))
-
+      beta0_tv_hat <- Matrix::solve(Kbeta0_tv, (abeta0[idx_b_tv]/Vbeta0[idx_b_tv] + beta[1,idx_b_tv]/Sigbeta[idx_b_tv]) )
+      beta0[idx_b_tv] <- as.vector(beta0_tv_hat + Matrix::solve( Matrix::chol(Kbeta0_tv), rnorm(k_beta_div_K*n_tv) ))
+    }
     # sample alp0
-    Kalp0_tv <- Matrix::sparseMatrix(i = 1:sum(idx_a_tv), j = 1:sum(idx_a_tv),
-                             x = 1/Sigalp[idx_a_tv] + 1/Valp0[idx_a_tv])
-    alp0_tv_hat <- Matrix::solve(Kalp0_tv, (aalp0[idx_a_tv] / Valp0[idx_a_tv] + alp[1,idx_a_tv]/Sigalp[idx_a_tv]))
-    alp0[idx_a_tv] <- as.vector(alp0_tv_hat + Matrix::solve( Matrix::chol(Kalp0_tv) , rnorm(sum(idx_a_tv))))
-
+    if (sum(idx_a_tv) > 0){
+      Kalp0_tv <- Matrix::sparseMatrix(i = 1:sum(idx_a_tv), j = 1:sum(idx_a_tv),
+                               x = 1/Sigalp[idx_a_tv] + 1/Valp0[idx_a_tv])
+      alp0_tv_hat <- Matrix::solve(Kalp0_tv, (aalp0[idx_a_tv] / Valp0[idx_a_tv] + alp[1,idx_a_tv]/Sigalp[idx_a_tv]))
+      alp0[idx_a_tv] <- as.vector(alp0_tv_hat + Matrix::solve( Matrix::chol(Kalp0_tv) , rnorm(sum(idx_a_tv))))
+    }
     # sample h0
     Kh0 <- Matrix::sparseMatrix(i = 1:K, j = 1:K, x = as.numeric(1/Sigh + 1/Vh0))
     h0_hat <- Matrix::solve(Kh0, (ah0/Vh0 + h[1,]/Sigh))
@@ -248,21 +250,23 @@ StudentTVPSV <- function(y, y0, p, priors, inits){
     # sample Sigbeta - InvGamma conjugate prior
     # E_beta <- beta[,idx_b_tv] - rbind(beta0[idx_b_tv], beta[1:(t_max-1),idx_b_tv])
     # Sigbeta[idx_b_tv] <- 1/ mapply(FUN = rgamma, n = 1, shape = t_max/2, rate = Sbeta0[idx_b_tv] + colSums(E_beta^2)/2)
-    Sigbeta[idx_b_tv] <- Sigma_sample(Beta = beta[,idx_b_tv],
+    if (sum(idx_b_tv) > 0){
+      Sigbeta[idx_b_tv] <- Sigma_sample(Beta = beta[,idx_b_tv, drop = FALSE],
                                       Beta0 = as.numeric(beta0[idx_b_tv]),
                                       Sigma_Beta = Sigbeta[idx_b_tv],
                                       Prior_Beta = Sbeta0[idx_b_tv],
                                       t_max = t_max)
-
+    }
     # sample Sigalp - InvGamma conjugate prior
     # E_alp <- alp[,idx_a_tv] - rbind(alp0[idx_a_tv], alp[1:(t_max-1),idx_a_tv])
     # Sigalp[idx_a_tv] <- 1/ mapply(FUN = rgamma, n = 1, shape = nualp0[idx_a_tv]+t_max/2, rate = Salp0[idx_a_tv] + colSums(E_alp^2)/2)
-    Sigalp[idx_a_tv] <- Sigma_sample(Beta = alp[,idx_a_tv],
+    if (sum(idx_a_tv) > 0){
+      Sigalp[idx_a_tv] <- Sigma_sample(Beta = alp[,idx_a_tv, drop = FALSE],
                                      Beta0 = as.numeric(alp0[idx_a_tv]),
                                      Sigma_Beta = Sigalp[idx_a_tv],
                                      Prior_Beta = Salp0[idx_a_tv],
                                      t_max = t_max)
-
+    }
 
     # sample Sigh
     # E_h <- h - rbind(t(h0), h[1:(t_max-1),])

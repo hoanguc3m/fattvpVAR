@@ -185,7 +185,7 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
 
         thetai0 <- c(abeta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], aalp0[count_seq] )
         Kthetai <- 1/Vthetai + XiSig %*% bigXi
-        Kthetai <- 0.5 * ( Kthetai + t(Kthetai))
+        Kthetai <- 0.5 * ( Kthetai + Matrix::t(Kthetai))
         thetai_hat <- Matrix::solve(Kthetai, thetai0/Vthetai + XiSig %*% shortY[,ii])
         thetai <- as.vector(thetai_hat + Matrix::solve(Matrix::chol(Kthetai) , Matrix(rnorm(ki), ncol = 1) ))
 
@@ -237,7 +237,7 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
     # E_beta <- beta[,idx_b_tv] - rbind(beta0[idx_b_tv], beta[1:(t_max-1),idx_b_tv])
     # Sigbeta[idx_b_tv] <- 1/ mapply(FUN = rgamma, n = 1, shape = t_max/2, rate = Sbeta0[idx_b_tv] + colSums(E_beta^2)/2)
     if (sum(idx_b_tv) > 0){
-      Sigbeta[idx_b_tv] <- Sigma_sample(Beta = beta[,idx_b_tv],
+      Sigbeta[idx_b_tv] <- Sigma_sample(Beta = beta[,idx_b_tv, drop = FALSE],
                                       Beta0 = as.numeric(beta0[idx_b_tv]),
                                       Sigma_Beta = Sigbeta[idx_b_tv],
                                       Prior_Beta = Sbeta0[idx_b_tv],
@@ -247,7 +247,7 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
     # E_alp <- alp[,idx_a_tv] - rbind(alp0[idx_a_tv], alp[1:(t_max-1),idx_a_tv])
     # Sigalp[idx_a_tv] <- 1/ mapply(FUN = rgamma, n = 1, shape = nualp0[idx_a_tv]+t_max/2, rate = Salp0[idx_a_tv] + colSums(E_alp^2)/2)
     if (sum(idx_a_tv) > 0){
-      Sigalp[idx_a_tv] <- Sigma_sample(Beta = alp[,idx_a_tv],
+      Sigalp[idx_a_tv] <- Sigma_sample(Beta = alp[,idx_a_tv, drop = FALSE],
                                      Beta0 = as.numeric(alp0[idx_a_tv]),
                                      Sigma_Beta = Sigalp[idx_a_tv],
                                      Prior_Beta = Salp0[idx_a_tv],
