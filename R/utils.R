@@ -107,3 +107,35 @@ Normal_approx <- function(mcmc_sample, ndraws){
               sum_log_prop = sum_log_prop))
 }
 
+
+#' @export
+Nu_Gamma_approx <- function(mcmc_sample, ndraws){
+  nElements <- ncol(mcmc_sample)
+  new_samples <- matrix(NA, ncol = nElements, nrow = ndraws, dimnames = list(c(), colnames(mcmc_sample)))
+  Density_prop <-  matrix(NA, ncol = nElements, nrow = ndraws)
+  shape_param <- rep(0, nElements)
+  rate_param <- rep(0, nElements)
+  for (i in c(1:nElements)){
+    fit.gamma <- fitdistrplus::fitdist(as.numeric(mcmc_sample[,i]), distr = "gamma", method = "mle")
+    shape_param[i] <- fit.gamma$estimate[1]
+    rate_param[i] <- fit.gamma$estimate[2]
+    tmp <- rgamma(ndraws*2, shape = shape_param[i], rate_param[i])
+    tmp <- tmp[tmp > 2]
+    tmp <- tmp[tmp < 100]
+    new_samples[,i] <- head(tmp,ndraws)
+    Density_prop[,i] <- dgamma(new_samples[,i], shape = shape_param[i], rate = rate_param[i], log = T)
+  }
+  return(list(new_samples = new_samples,
+              sum_log_prop = apply(Density_prop, 1, sum)))
+}
+
+#' @export
+int_w_MultiOrthStudent2 <- function(y, xt, A, B, sigma, nu, gamma = rep(0,K), t_max, K, R = 100){
+  u <- A %*% (t(y) - B %*%xt)
+  llw <- rep(0,K)
+  for (j in c(1:K)){
+    llw[j] <- sum(ghyp::dghyp(u[j,], object = ghyp::ghyp(lambda = -0.5*nu[j], chi = nu[j], psi = 0, mu = 0, sigma = sigma[j],
+                                                         gamma = gamma[j]), logvalue = TRUE)) # input here sigma, not sigma^2
+  }
+  return(sum(llw))
+}

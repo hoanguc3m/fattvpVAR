@@ -21,6 +21,11 @@ load("G100.RData")
 G100_ML <- ML_GaussTVPSV(Chain = G100_obj, numCores = numCores)
 save(G100_ML, file = "G100_ML.RData")
 
+load("G011.RData")
+G011_ML <- ML_GaussTVPSV(Chain = G011_obj, numCores = numCores)
+save(G011_ML, file = "G011_ML.RData")
+
+
 # load("G111.RData")
 # G111_ML <- ML_GaussTVPSV(Chain = G111_obj, numCores = numCores)
 # save(G111_ML, file = "G111_ML.RData")
