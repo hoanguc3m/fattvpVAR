@@ -27,6 +27,7 @@ RhpcBLASctl::blas_set_num_threads(2)
 inits$is_tv = c(0,0,0); G000_obj <- GaussTVPSV(y, y0, p, priors, inits)
 save(G000_obj, file = "/home/hoanguc3m/Downloads/WP11/G000.RData")
 
+
 inits$is_tv = c(0,0,1); G001_obj <- GaussTVPSV(y, y0, p, priors, inits)
 save(G001_obj, file = "/home/hoanguc3m/Downloads/WP11/G001.RData")
 
@@ -149,7 +150,7 @@ gg_sigma_mat <- function(i){
   max_nu <- max(c(Sigma_h000[,i], Sigma_h111[,i]))
   ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) +
     geom_histogram(position = "identity", alpha = 0.8, bins = 30) + xlim(0,max_nu) +
-    geom_density(position = "identity", alpha = 0.5) + xlab(expression(sigma[h]^2)) + ylab(varname[i]) + theme_bw() + theme(legend.position="bottom")
+    geom_density(position = "identity", alpha = 0.5) + ylab(expression(sigma[h]^2)) + xlab(varname[i]) + theme_bw() + theme(legend.position="bottom")
 }
 p1 <- gg_sigma_mat(1)
 p2 <- gg_sigma_mat(2)
@@ -168,17 +169,70 @@ varname <- c("b[1]", "B1[1,1]", "B1[1,2]", "B1[1,3]", "B2[1,1]", "B2[1,2]", "B2[
              "A[2,1]", "A[3,1]", "A[3,2]")
 
 gg_sigmaAB_mat <- function(i){
-  data_nu <- data.frame(nu = c(sqrt(Sigma_ab111[,i])) , Models = c(rep("T111", ndraws)))
-  max_nu <- sqrt(max(c(Sigma_ab111[,i])))
+  data_nu <- data.frame(nu = c((Sigma_ab111[,i])) , Models = c(rep("T111", ndraws)))
+  max_nu <- (max(c(Sigma_ab111[,i])))
   ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) +
     geom_histogram(position = "identity", alpha = 0.8, bins = 30) + xlim(0,max_nu) +
-    geom_density(position = "identity", alpha = 0.5) + xlab(expression(paste(varname[i]))) + ylab(expression(sigma)) + theme_bw() + theme(legend.position="bottom")
+    geom_density(position = "identity", alpha = 0.5) + xlab(bquote(.(varname[i]))) + ylab(expression(sigma^2)) + theme_bw() + theme(legend.position="bottom")
 }
-p1 <- gg_sigmaAB_mat(1)
-p2 <- gg_sigmaAB_mat(2)
-p3 <- gg_sigmaAB_mat(3)
+l <- list()
+for (i in c(1:33)) l[[i]] <- gg_sigmaAB_mat(i)
 
-pdf(file='/home/hoanguc3m/Downloads/WP11/img/postSigmah.pdf', width = 12, height = 4)
+
+pdf(file='/home/hoanguc3m/Downloads/WP11/img/postSigmaAB.pdf', width = 12, height = 3*11)
 par(mar=c(2,5,3,1))
-grid.arrange(p1, p2, p3, nrow = 1, ncol = 3)
+plot_grid(l[[1]], l[[11]], l[[21]],
+          l[[2]], l[[12]], l[[22]],
+          l[[3]], l[[13]], l[[23]],
+          l[[4]], l[[14]], l[[24]],
+          l[[5]], l[[15]], l[[25]],
+          l[[6]], l[[16]], l[[26]],
+          l[[7]], l[[17]], l[[27]],
+          l[[8]], l[[18]], l[[28]],
+          l[[9]], l[[19]], l[[29]],
+          l[[10]], l[[20]], l[[30]],
+          l[[31]], l[[32]], l[[33]],
+          ncol = 3, byrow = TRUE)
+dev.off()
+
+####################################################################
+ab111_mean <- cbind( apply(T111_obj$store_beta, MARGIN = c(2,3), FUN = mean),
+                     apply(T111_obj$store_alp, MARGIN = c(2,3), FUN = mean))
+ab111_q10 <- cbind( apply(T111_obj$store_beta, MARGIN = c(2,3), FUN = quantile, probs = c(0.1)),
+                     apply(T111_obj$store_alp, MARGIN = c(2,3), FUN = quantile, probs = c(0.1)))
+ab111_q90 <- cbind( apply(T111_obj$store_beta, MARGIN = c(2,3), FUN = quantile, probs = c(0.9)),
+                    apply(T111_obj$store_alp, MARGIN = c(2,3), FUN = quantile, probs = c(0.9)))
+
+gg_TVPAB_mat <- function(i){
+  Time <- tail(seq(as.Date("1953/04/01"), as.Date("2021/02/01"), "months"), 812)
+
+  data_nu <- data.frame(Time = Time, AB_mean = ab111_mean[,i])
+
+  data_nu1 <- data.frame(Time = c(Time, rev(Time)) ,
+                         AB_UL = c(ab111_q10[,i], rev(ab111_q90[,i])))
+  ggplot() + geom_line(data=data_nu, mapping=aes(x=Time, y=AB_mean), color = "#ff0c00") +
+    geom_polygon(data=data_nu1, mapping=aes(x=Time, y=AB_UL), fill = "#5ba6d6", alpha = 0.5) +
+    xlab(bquote(.(varname[i]))) + ylab("") + theme_bw() + theme(legend.position="bottom") + theme(plot.title = element_text(hjust = 0.5)) +
+    geom_rect(data=recessions.df, inherit.aes=F, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='darkgray', alpha=0.5)
+
+}
+
+l <- list()
+for (i in c(1:33)) l[[i]] <- gg_TVPAB_mat(i)
+
+
+pdf(file='/home/hoanguc3m/Downloads/WP11/img/postAB.pdf', width = 12, height = 3*11)
+par(mar=c(2,5,3,1))
+plot_grid(l[[1]], l[[11]], l[[21]],
+          l[[2]], l[[12]], l[[22]],
+          l[[3]], l[[13]], l[[23]],
+          l[[4]], l[[14]], l[[24]],
+          l[[5]], l[[15]], l[[25]],
+          l[[6]], l[[16]], l[[26]],
+          l[[7]], l[[17]], l[[27]],
+          l[[8]], l[[18]], l[[28]],
+          l[[9]], l[[19]], l[[29]],
+          l[[10]], l[[20]], l[[30]],
+          l[[31]], l[[32]], l[[33]],
+          ncol = 3, byrow = TRUE)
 dev.off()

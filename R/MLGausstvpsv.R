@@ -1,6 +1,6 @@
 #' @export
-ML_GaussTVPSV <- function(Chain, numCores = NULL){
-  #Chain$data = list(y = y, y0 = y0, p = p, priors = priors, inits = inits)
+ML_GaussTVPSV <- function(Chain, numCores = 4){
+  #Chain <- G101_obj
   data = Chain$data
   Y0 <- data$y0
   shortY <- data$y
@@ -8,7 +8,8 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
   K <- ncol(shortY)
   Y <- matrixcalc::vec(t(shortY))
   p <- data$p
-  is_tv <- inits$is_tv
+  is_tv <- data$inits$is_tv
+  priors <- data$priors
   M <- 20000
 
   #is_tv = [1 1 1]'; # n-vector that denotes which equations have TVP; must have the same dim as the VAR
@@ -17,7 +18,7 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
   k_alp <- K*(K-1)/2 # dimension of the impact matrix
   k_beta <- K^2*p + K # number of VAR coefficients
   k_beta_div_K <- K*p + 1
-  n_tv <- sum(inits$is_tv)# # of time-varying equations
+  n_tv <- sum(is_tv)# # of time-varying equations
 
   #n = size(store_Sigh,2); # It is our K
 
@@ -52,16 +53,16 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
 
   Sigma_beta_gen <- matrix(0, ncol = ncol(Chain$store_Sigbeta), nrow = M) #
   if (sum(idx_b_tv) > 0 ){
-    Sigma_beta_list <- Normal_approx(Chain$store_Sigbeta[idx_b_tv,]^0.5, ndraws = M) # Change to normal
-    Sigma_beta_gen[idx_b_tv,] <- Sigma_beta_list$new_samples^2 # Change to square
+    Sigma_beta_list <- Normal_approx(Chain$store_Sigbeta[,idx_b_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
+    Sigma_beta_gen[,idx_b_tv] <- Sigma_beta_list$new_samples^2 # Change to square
   } else {
     Sigma_beta_list <- list(sum_log_prop = 0)
   }
 
   Sigma_alp_gen <- matrix(0, ncol = ncol(Chain$store_Sigalp), nrow = M) #
-  if (sum(idx_b_tv) > 0 ){
-    Sigma_alp_list <- Normal_approx(Chain$store_Sigalp[idx_a_tv,]^0.5, ndraws = M) # Change to normal
-    Sigma_alp_gen[idx_a_tv,] <- Sigma_alp_list$new_samples^2 # Change to square
+  if (sum(idx_a_tv) > 0 ){
+    Sigma_alp_list <- Normal_approx(Chain$store_Sigalp[,idx_a_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
+    Sigma_alp_gen[,idx_a_tv] <- Sigma_alp_list$new_samples^2 # Change to square
   } else {
     Sigma_alp_list <- list(sum_log_prop = 0)
   }
@@ -89,17 +90,17 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
   aalp0 <- matrix(0, nrow = k_alp, ncol = 1);
   Valp0 <- 10*matrix(1, nrow = k_alp, ncol = 1);
 
-  EstMdl1 <- arima(y[,1] ,order = c(1,0,0))
-  EstMdl2 <- arima(y[,2] ,order = c(1,0,0))
-  EstMdl3 <- arima(y[,3] ,order = c(1,0,0))
+  EstMdl1 <- arima(shortY[,1] ,order = c(1,0,0))
+  EstMdl2 <- arima(shortY[,2] ,order = c(1,0,0))
+  EstMdl3 <- arima(shortY[,3] ,order = c(1,0,0))
 
   ah0 <- c(log(EstMdl1$sigma2), log(EstMdl1$sigma2), log(EstMdl1$sigma2))
   Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
 
 
   sum_log_prior <- apply( cbind(dgamma(Sigma_h_gen, shape = 0.5, rate = 0.5 / priors$hyper_h, log = T),
-                           dgamma(Sigma_beta_gen[idx_b_tv,], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
-                           dgamma(Sigma_alp_gen[idx_a_tv,], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
+                           dgamma(Sigma_beta_gen[,idx_b_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
+                           dgamma(Sigma_alp_gen[,idx_a_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
                            dnorm(h0_gen, mean = ah0, sd = sqrt(Vh0), log = T),
                            dnorm(beta0_gen, mean = abeta0, sd = sqrt(Vbeta0), log = T),
                            dnorm(alp0_gen, mean = aalp0, sd = sqrt(Valp0), log = T)),  MARGIN = 1, FUN = sum)
@@ -107,7 +108,7 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
   #sum_log = rep(0, M);
   RhpcBLASctl::blas_set_num_threads(1)
 
-  sum_log <- parallel::mclapply(1:10,
+  sum_log <- parallel::mclapply(1:M,
                      FUN = function(j) {
     Sigbeta = Sigma_beta_gen[j, ]
     Sigalp = Sigma_alp_gen[j, ]
@@ -145,7 +146,8 @@ ML_GaussTVPSV <- function(Chain, numCores = NULL){
     }
 
     llike
-    }, mc.cores = 16)
+
+    }, mc.cores = numCores)
   sum_log = unlist(sum_log)
 
   store_w = sum_log + sum_log_prior - sum_log_prop

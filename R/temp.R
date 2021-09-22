@@ -28,7 +28,8 @@ deny_h <- function(Yi,hc,Sigthetai,bigXi,thetai0){
   dtheta = XinvSig %*% Yi + HinvSH %*% alptheta;
 
   llike = -t_max*K*0.5*log(2*pi) - t_max/2*sum(log(Sigthetai)) - .5*sum(hc) -
-   sum(log(Matrix::diag(chol(Ktheta)))) - .5*( Matrix::t(Yi) %*% invSig %*% Yi + Matrix::t(alptheta) %*% HinvSH %*% alptheta -
+   #sum(log(Matrix::diag(Matrix::chol(Ktheta)))) - .5*( Matrix::t(Yi) %*% invSig %*% Yi + Matrix::t(alptheta) %*% HinvSH %*% alptheta -
+    sum(log(Matrix::diag(Matrix::chol(Ktheta)))) - .5*( sum(Yi^2 * exp(-hc)) + Matrix::t(alptheta) %*% HinvSH %*% alptheta -
   Matrix::t(dtheta) %*% Matrix::solve(Ktheta, dtheta))
   return(as.numeric(llike))
 }
@@ -64,7 +65,7 @@ intlike_tvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0){
 
   e_h = 1; ht = rep(h0i,t_max);
   countout = 0;
-  while ( e_h> .01 & count < 100){
+  while ( e_h> .01 & countout < 100){
     # E-step
     invSig = sparseMatrix(i = 1:(t_max*K),j = 1:(t_max*K), x = exp(-ht))
     XinvSig = Matrix::t(bigXi) %*% invSig
@@ -105,9 +106,8 @@ intlike_tvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0){
       HinvSH_theta = Matrix::t(Htheta) %*% invStheta %*% Htheta;
       Ktheta = HinvSH_theta + XinvSig %*% bigXi;
       dtheta = XinvSig %*% Yi + HinvSH_theta %*% alptheta;
-      thetahat = Matrix::solve(Ktheta,dtheta)
+      # thetahat = Matrix::solve(Ktheta,dtheta)
       #CKtheta = Matrix::chol(Ktheta)
-
       #zhat = apply((CKtheta %*% solve(bigXi)^2),MARGIN = 2, FUN = sum) + (Yi-bigXi %*% thetahat)^2;
       qq = bigXi %*% Matrix::solve(Ktheta, cbind(Matrix::t(bigXi), dtheta) );
       zhat = Matrix::diag(qq) + (Yi-qq[,t_max+1])^2;
