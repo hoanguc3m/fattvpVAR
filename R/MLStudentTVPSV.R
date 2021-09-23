@@ -1,6 +1,6 @@
 #' @export
 ML_StudentTVPSV <- function(Chain, numCores = 4){
-  #Chain <- T000_obj
+  #Chain <- T111_obj
   data = Chain$data
   Y0 <- data$y0
   shortY <- data$y
@@ -50,11 +50,13 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
   Sigma_h_gen <- Chain$store_Sigh # Always SV
   Sigma_h_list <- Normal_approx(Chain$store_Sigh^0.5, ndraws = M) # Change to normal
   Sigma_h_gen <- Sigma_h_list$new_samples^2 # Change to square
+  Sigma_h_list$sum_log_prop <- Sigma_h_list$sum_log_prop - apply(log(abs(Sigma_h_list$new_samples)), MARGIN = 1, FUN = sum) # Jacobian
 
   Sigma_beta_gen <- matrix(0, ncol = ncol(Chain$store_Sigbeta), nrow = M) #
   if (sum(idx_b_tv) > 0 ){
     Sigma_beta_list <- Normal_approx(Chain$store_Sigbeta[,idx_b_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
     Sigma_beta_gen[,idx_b_tv] <- Sigma_beta_list$new_samples^2 # Change to square
+    Sigma_beta_list$sum_log_prop <- Sigma_beta_list$sum_log_prop - apply(log(abs(Sigma_beta_list$new_samples)), MARGIN = 1, FUN = sum) # Jacobian
   } else {
     Sigma_beta_list <- list(sum_log_prop = 0)
   }
@@ -63,6 +65,7 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
   if (sum(idx_a_tv) > 0 ){
     Sigma_alp_list <- Normal_approx(Chain$store_Sigalp[,idx_a_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
     Sigma_alp_gen[,idx_a_tv] <- Sigma_alp_list$new_samples^2 # Change to square
+    Sigma_alp_list$sum_log_prop <- Sigma_alp_list$sum_log_prop - apply(log(abs(Sigma_alp_list$new_samples)), MARGIN = 1, FUN = sum) # Jacobian
   } else {
     Sigma_alp_list <- list(sum_log_prop = 0)
   }
@@ -71,10 +74,12 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
   #beta0_gen <- Chain$store_beta0
   beta0_list <- Normal_approx(Chain$store_beta0, ndraws = M)
   beta0_gen <- beta0_list$new_samples
+  beta_mean <- apply(Chain$store_beta, MARGIN = c(2,3), FUN = mean)
 
   #alp0_gen <- Chain$store_alp0
   alp0_list <- Normal_approx(Chain$store_alp0, ndraws = M)
   alp0_gen <- alp0_list$new_samples
+  alp_mean <- apply(Chain$store_alp, MARGIN = c(2,3), FUN = mean)
 
   #h0_gen <- Chain$store_h0
   h0_list <- Normal_approx(Chain$store_h0, ndraws = M)
@@ -138,21 +143,24 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
 
 
       if (is_tv[ii] == 1){
-        bigXi = SURform(X)
+        Xi = X
+        wXi = X / w_mean[,ii]
+        wYi = shortY[,ii] / w_mean[,ii]
 
         Sigthetai = c( Sigbeta[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], Sigalp[count_seq])
         thetai0 = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
-        llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], thetai0 = thetai0)
+        thetaibar =  matrixcalc::vec( t(cbind( beta_mean[,((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp_mean[,count_seq] )))
+
+        llikei = intlike_Ttvpsv(Yi = shortY[,ii], wYi = wYi, Xi = Xi, wXi = wXi,
+                                Sigthetai = Sigthetai, Sig_hi = Sigh[ii], h0i = h0[ii],
+                                thetai0 = thetai0, nui = nu[ii], wi = w_mean[,ii],
+                                thetaibar = thetaibar)
+        llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = SURform(Xi), h0i = h0[ii], thetai0 = thetai0)
+
       }  else {
         bigXi = X
         thetai = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
         llikei = intlike_Tvarsv(Yi = shortY[,ii], thetai = thetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], nui = nu[ii], wi = w_mean[,ii]);
-        # tmp1 <- sapply(1:200, FUN = function(o){ intlike_Tvarsv1(Yi = shortY[,ii], thetai = thetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], nui = nu[ii], wi = w_mean[,ii]);})
-        # tmp2 <- sapply(1:200, FUN = function(o){ intlike_Tvarsv2(Yi = shortY[,ii], thetai = thetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], nui = nu[ii], wi = w_mean[,ii]);})
-        # tmp3 <- sapply(1:200, FUN = function(o){ intlike_Tvarsv3(Yi = shortY[,ii], thetai = thetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], nui = nu[ii], wi = w_mean[,ii]);})
-        # c(mean(tmp1), mean(tmp2), mean(tmp3))
-        # c(sd(tmp1), sd(tmp2), sd(tmp3))
-        # #llikei = intlike_varsv(Yi = shortY[,ii], thetai = thetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii]);
       }
 
       llike = llike + llikei

@@ -125,7 +125,7 @@ intlike_tvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0){
     c_pri = -t_max*K/2*log(2*pi) -.5*t_max*sum(log(Sig_hi))
     c_IS = -t_max*K/2*log(2*pi) + sum(log(Matrix::diag(Cg)))
 
-    R = 10
+    R = 20
     store_llike = rep(0, R)
     for (i in c(1:R)){
       hc = ht + Matrix::solve(Matrix::t(Cg), rnorm(t_max*K))
@@ -135,6 +135,7 @@ intlike_tvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0){
     }
     # increase simulation size if the variance of the log-likelihood > 1
     var_llike = var(store_llike)/R
+    var_llike
 
     maxllike = max(store_llike);
     intlike = log(mean(exp(store_llike-maxllike))) + maxllike;

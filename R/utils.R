@@ -107,6 +107,32 @@ Normal_approx <- function(mcmc_sample, ndraws){
               sum_log_prop = sum_log_prop))
 }
 
+#' @export
+LL_tnorm <- function(par, data){
+- sum(log(dtruncnorm(x = data, a=0, b=Inf, mean = par[1], sd = par[2])))
+}
+
+#' @export
+Normal_trunc_approx <- function(mcmc_sample, ndraws){
+
+  nElements <- ncol(mcmc_sample)
+  mcmc_mean <- rep(0, nElements)
+  mcmc_Sigma <- rep(0, nElements)
+  new_samples <- matrix(NA, ncol = nElements, nrow = ndraws)
+  sum_log_prop <- rep(0, ndraws)
+
+  for (i in c(1:nElements)){
+    result <- optim(par = c(0, 1), fn = LL_tnorm, data = mcmc_sample[,i])
+    new_samples[,i] <- rtruncnorm(ndraws, mean = result$par[1], sd = result$par[2], a = 0)
+    sum_log_prop <- sum_log_prop +
+      log(dtruncnorm(x = new_samples[,i], a=0, b=Inf, mean = result$par[1], sd = result$par[2])) - log(2) - log(new_samples[,i]) #Jacobian trans
+  }
+
+  colnames(new_samples) <- colnames(mcmc_sample)
+  return(list(new_samples = new_samples,
+              sum_log_prop = sum_log_prop))
+}
+
 
 #' @export
 Nu_Gamma_approx <- function(mcmc_sample, ndraws){

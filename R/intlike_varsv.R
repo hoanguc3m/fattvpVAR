@@ -50,7 +50,7 @@ intlike_varsv <- function(Yi,thetai,Sig_hi,bigXi,h0i){
 
   e = Yi - bigXi %*% thetai
 
-  R = 15
+  R = 20
   store_llike = rep(0, R)
   for (i in c(1:R)){
         hc = ht + Matrix::solve(Matrix::t(CKh), rnorm(t_max*K))

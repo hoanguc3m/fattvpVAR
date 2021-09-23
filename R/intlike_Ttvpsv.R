@@ -35,7 +35,11 @@ denTy_h <- function(Yi,hc,Sigthetai,bigXi,thetai0){
 }
 
 #' @export
-intlike_Ttvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0, nu){
+intlike_Ttvpsv <- function(Yi,wYi, Xi, wXi, Sigthetai, Sig_hi, h0i, thetai0, nui, wi, thetaibar){
+
+  bigXi = SURform(Xi)
+  bigwXi = SURform(wXi)
+
   K = length(Sig_hi)
   t_max = length(Yi)/K;
   ktheta = length(Sigthetai)
@@ -68,16 +72,16 @@ intlike_Ttvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0, nu){
   while ( e_h> .01 & countout < 100){
     # E-step
     invSig = sparseMatrix(i = 1:(t_max*K),j = 1:(t_max*K), x = exp(-ht))
-    XinvSig = Matrix::t(bigXi) %*% invSig
+    XinvSig = Matrix::t(bigwXi) %*% invSig
     HinvSH_theta = Matrix::t(Htheta) %*% invStheta %*% Htheta;
-    Ktheta = HinvSH_theta + XinvSig %*% bigXi;
-    dtheta = XinvSig %*% Yi + HinvSH_theta %*% alptheta;
+    Ktheta = HinvSH_theta + XinvSig %*% bigwXi;
+    dtheta = XinvSig %*% wYi + HinvSH_theta %*% alptheta;
     # thetahat = Matrix::solve(Ktheta,dtheta)
     # CKtheta = Matrix::chol(Ktheta)
-    # zhat = apply((bigXi %*% Matrix::solve(CKtheta) )^2, MARGIN = 1, FUN = sum) + (Yi-bigXi%*%thetahat)^2;
+    # zhat = apply((bigwXi %*% Matrix::solve(CKtheta) )^2, MARGIN = 1, FUN = sum) + (Yi-bigwXi%*%thetahat)^2;
     # more robust and slightly faster - Sune Karlsson
-    qq = bigXi %*% Matrix::solve(Ktheta, cbind(Matrix::t(bigXi), dtheta) );
-    zhat = Matrix::diag(qq) + (Yi-qq[,t_max+1])^2;
+    qq = bigwXi %*% Matrix::solve(Ktheta, cbind(Matrix::t(bigwXi), dtheta) );
+    zhat = Matrix::diag(qq) + (wYi-qq[,t_max+1])^2;
 
 
     # M-step
@@ -99,24 +103,24 @@ intlike_Ttvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0, nu){
     countout = countout + 1;
     }
 
-    if (countout == 100){
+  if (countout == 100){
       ht = rep(h0i,t_max);
       invSig = sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = exp(-ht))
-      XinvSig = Matrix::t(bigXi) %*% invSig;
+      XinvSig = Matrix::t(bigwXi) %*% invSig;
       HinvSH_theta = Matrix::t(Htheta) %*% invStheta %*% Htheta;
-      Ktheta = HinvSH_theta + XinvSig %*% bigXi;
-      dtheta = XinvSig %*% Yi + HinvSH_theta %*% alptheta;
+      Ktheta = HinvSH_theta + XinvSig %*% bigwXi;
+      dtheta = XinvSig %*% wYi + HinvSH_theta %*% alptheta;
       # thetahat = Matrix::solve(Ktheta,dtheta)
       #CKtheta = Matrix::chol(Ktheta)
-      #zhat = apply((CKtheta %*% solve(bigXi)^2),MARGIN = 2, FUN = sum) + (Yi-bigXi %*% thetahat)^2;
-      qq = bigXi %*% Matrix::solve(Ktheta, cbind(Matrix::t(bigXi), dtheta) );
+      #zhat = apply((CKtheta %*% solve(bigwXi)^2),MARGIN = 2, FUN = sum) + (wYi-bigwXi %*% thetahat)^2;
+      qq = bigwXi %*% Matrix::solve(Ktheta, cbind(Matrix::t(bigwXi), dtheta) );
       zhat = Matrix::diag(qq) + (Yi-qq[,t_max+1])^2;
 
       einvhttzhat = exp(-ht)*zhat;
       HQ = -HinvSH_h -.5*sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = einvhttzhat)
     }
 
-    Z = Matrix::t(XinvSig) %*% Matrix::solve(Ktheta,Matrix::t(bigXi))
+    Z = Matrix::t(XinvSig) %*% Matrix::solve(Ktheta,Matrix::t(bigwXi))
     HH = -.5*Matrix::t(Z)*(Diagonal(K*t_max)-Z);
     Kh = -(HQ+HH);
     Cg = Matrix::t(Matrix::chol(Kh))
@@ -125,13 +129,23 @@ intlike_Ttvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0, nu){
     c_pri = -t_max*K/2*log(2*pi) -.5*t_max*sum(log(Sig_hi))
     c_IS = -t_max*K/2*log(2*pi) + sum(log(Matrix::diag(Cg)))
 
-    R = 10
+    R = 50
     store_llike = rep(0, R)
     for (i in c(1:R)){
       hc = ht + Matrix::solve(Matrix::t(Cg), rnorm(t_max*K))
-      #shorthc = matrix(hc, ncol = K, nrow = t_max);
-            store_llike[i] = deny_h(Yi,hc,Sigthetai,bigXi,thetai0) + c_pri - 0.5*Matrix::t(hc-alph) %*% HinvSH_h %*% (hc-alph) -
-              (c_IS - 0.5*Matrix::t(hc-ht)%*%Kh%*%(hc-ht) );
+      w_post_a <- (nui+1)*0.5
+      w_post_b <- as.numeric(nui*0.5 + 0.5*(Yi - bigXi %*% thetaibar )^2* exp(-hc))
+      ws <- mapply(rinvgamma, n = 1, shape = w_post_a, rate = w_post_b)
+      wsample <- sqrt(ws)
+      nYi = Yi / wsample
+      nXi = Xi / wsample
+      bignXi = SURform(nXi)
+      store_llike[i] = deny_h(Yi = nYi, hc = hc, Sigthetai = Sigthetai,
+                              bigXi = bignXi, thetai0 = thetai0) +
+              (c_pri - 0.5*Matrix::t(hc-alph) %*% HinvSH_h %*% (hc-alph)) -
+              (c_IS - 0.5*Matrix::t(hc-ht)%*%Kh%*%(hc-ht) ) +
+              sum(dgamma(ws, shape = nui*0.5, rate = nui*0.5, log = TRUE)) -
+              sum(dgamma(ws, shape = w_post_a, rate = w_post_b, log = TRUE))
     }
     # increase simulation size if the variance of the log-likelihood > 1
     var_llike = var(store_llike)/R

@@ -21,8 +21,8 @@ intlike_Tvarsv <- function(Yi,thetai,Sig_hi,bigXi,h0i,nui,wi){
   ht = alph + .01*rnorm(t_max)
 
   e_h = 1;
-  count = 0;
-  while ( e_h> .01 & count < max_loop){
+  countout = 0;
+  while ( e_h> .01 & countout < max_loop){
     einvhts2 = exp(-ht)*s2
     gh = -HinvSH_h %*% (ht-alph) - 0.5*(1-einvhts2);
     Gh = -HinvSH_h -.5*sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = einvhts2)
@@ -33,10 +33,10 @@ intlike_Tvarsv <- function(Yi,thetai,Sig_hi,bigXi,h0i,nui,wi){
     newht = ht - Matrix::solve(Gh,gh)
     e_h = max(abs(newht-ht))
     ht = newht
-    count = count + 1
+    countout = countout + 1
   }
 
-  if (count == max_loop){
+  if (countout == max_loop){
     ht = rep(h0i,t_max)
     einvhts2 = exp(-ht)*s2
     Gh = -HinvSH_h -.5*sparseMatrix(i =1:(t_max*K), j = 1:(t_max*K), x = as.numeric(einvhts2))

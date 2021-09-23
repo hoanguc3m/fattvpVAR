@@ -48,25 +48,51 @@ ML_GaussTVPSV <- function(Chain, numCores = 4){
 
   # Sigma approx
   Sigma_h_gen <- Chain$store_Sigh # Always SV
-  Sigma_h_list <- Normal_approx(Chain$store_Sigh^0.5, ndraws = M) # Change to normal
-  Sigma_h_gen <- Sigma_h_list$new_samples^2 # Change to square
+  Sigma_h_list <- Normal_approx(log(Chain$store_Sigh), ndraws = M) # Change to normal
+  Sigma_h_gen <- exp(Sigma_h_list$new_samples) # Change to square
+  Sigma_h_list$sum_log_prop <- Sigma_h_list$sum_log_prop - apply(Sigma_h_list$new_samples, MARGIN = 1, FUN = sum) # Jacobian
 
   Sigma_beta_gen <- matrix(0, ncol = ncol(Chain$store_Sigbeta), nrow = M) #
   if (sum(idx_b_tv) > 0 ){
-    Sigma_beta_list <- Normal_approx(Chain$store_Sigbeta[,idx_b_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
-    Sigma_beta_gen[,idx_b_tv] <- Sigma_beta_list$new_samples^2 # Change to square
+    Sigma_beta_list <- Normal_approx(log(Chain$store_Sigbeta[,idx_b_tv, drop = FALSE]), ndraws = M) # Change to normal
+    Sigma_beta_gen[,idx_b_tv] <- exp(Sigma_beta_list$new_samples) # Change to square
+    Sigma_beta_list$sum_log_prop <- Sigma_beta_list$sum_log_prop - apply(Sigma_beta_list$new_samples, MARGIN = 1, FUN = sum) # Jacobian
   } else {
     Sigma_beta_list <- list(sum_log_prop = 0)
   }
 
   Sigma_alp_gen <- matrix(0, ncol = ncol(Chain$store_Sigalp), nrow = M) #
   if (sum(idx_a_tv) > 0 ){
-    Sigma_alp_list <- Normal_approx(Chain$store_Sigalp[,idx_a_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
-    Sigma_alp_gen[,idx_a_tv] <- Sigma_alp_list$new_samples^2 # Change to square
-  } else {
+    Sigma_alp_list <- Normal_approx(log(Chain$store_Sigalp[,idx_a_tv, drop = FALSE]), ndraws = M) # Change to normal
+    Sigma_alp_gen[,idx_a_tv] <- exp(Sigma_alp_list$new_samples) # Change to square
+    Sigma_alp_list$sum_log_prop <- Sigma_alp_list$sum_log_prop - apply(Sigma_alp_list$new_samples, MARGIN = 1, FUN = sum) # Jacobian
+    } else {
     Sigma_alp_list <- list(sum_log_prop = 0)
   }
 
+  # # Sigma approx
+  # Sigma_h_gen <- Chain$store_Sigh # Always SV
+  # Sigma_h_list <- Normal_approx(Chain$store_Sigh^0.5, ndraws = M) # Change to normal
+  # Sigma_h_gen <- Sigma_h_list$new_samples^2 # Change to square
+  # Sigma_h_list$sum_log_prop <- Sigma_h_list$sum_log_prop - apply(log(abs(Sigma_h_list$new_samples)), MARGIN = 1, FUN = sum) # Jacobian
+  #
+  # Sigma_beta_gen <- matrix(0, ncol = ncol(Chain$store_Sigbeta), nrow = M) #
+  # if (sum(idx_b_tv) > 0 ){
+  #   Sigma_beta_list <- Normal_approx(Chain$store_Sigbeta[,idx_b_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
+  #   Sigma_beta_gen[,idx_b_tv] <- Sigma_beta_list$new_samples^2 # Change to square
+  #   Sigma_beta_list$sum_log_prop <- Sigma_beta_list$sum_log_prop - apply(log(abs(Sigma_beta_list$new_samples)), MARGIN = 1, FUN = sum) # Jacobian
+  # } else {
+  #   Sigma_beta_list <- list(sum_log_prop = 0)
+  # }
+  #
+  # Sigma_alp_gen <- matrix(0, ncol = ncol(Chain$store_Sigalp), nrow = M) #
+  # if (sum(idx_a_tv) > 0 ){
+  #   Sigma_alp_list <- Normal_approx(Chain$store_Sigalp[,idx_a_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
+  #   Sigma_alp_gen[,idx_a_tv] <- Sigma_alp_list$new_samples^2 # Change to square
+  #   Sigma_alp_list$sum_log_prop <- Sigma_alp_list$sum_log_prop - apply(log(abs(Sigma_alp_list$new_samples)), MARGIN = 1, FUN = sum) # Jacobian
+  # } else {
+  #   Sigma_alp_list <- list(sum_log_prop = 0)
+  # }
   # beta0, alp0, h0 approx  and obtain IS draws
   #beta0_gen <- Chain$store_beta0
   beta0_list <- Normal_approx(Chain$store_beta0, ndraws = M)
@@ -130,7 +156,6 @@ ML_GaussTVPSV <- function(Chain, numCores = 4){
 
       if (is_tv[ii] == 1){
         bigXi = SURform(X)
-
         Sigthetai = c( Sigbeta[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], Sigalp[count_seq])
         thetai0 = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
         llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], thetai0 = thetai0)
