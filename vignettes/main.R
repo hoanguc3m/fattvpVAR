@@ -3,82 +3,85 @@ library(Matrix)
 library(fattvpVAR)
 library(profvis)
 library(invgamma)
-dataraw <- read_excel("/home/hoanguc3m/MEGA/HybridVAR/EconLetter/temp/Data210324.xlsx",
+setwd("/home/hoanguc3m/Downloads/WP11/")
+dataraw <- read_excel("/home/hoanguc3m/MEGA/HybridVAR/EconLetter/temp/Data210927.xlsx",
                       col_types = c("text", "numeric", "numeric", "numeric"))
 priors <- list(  hyper_ab = 1,
                  hyper_h = 1)
 
 p <- 3 # number of lags
-atT <- 815
+atT <- 821
+
 
 y <- data.matrix(dataraw[(p+1):atT,c(2:4)])
 y0 <- data.matrix(dataraw[1:p,c(2:4)])
+#vars::VARselect(y)
 
 # inits <- list(samples = 20000,
 #               burnin = 5000,
 #               thin = 4,
 #               is_tv = c(0,0,0) )
 
-inits <- list(samples = 20000, burnin = 5000, thin = 4)
+inits <- list(samples = 100000, burnin = 20000, thin = 20)
 RhpcBLASctl::blas_set_num_threads(2)
 
 ####################################################################
 {
 inits$is_tv = c(0,0,0); G000_obj <- GaussTVPSV(y, y0, p, priors, inits)
-save(G000_obj, file = "/home/hoanguc3m/Downloads/WP11/G000.RData")
+save(G000_obj, file = "G000.RData")
 
 
 inits$is_tv = c(0,0,1); G001_obj <- GaussTVPSV(y, y0, p, priors, inits)
-save(G001_obj, file = "/home/hoanguc3m/Downloads/WP11/G001.RData")
+save(G001_obj, file = "G001.RData")
 
 inits$is_tv = c(0,1,0); G010_obj <- GaussTVPSV(y, y0, p, priors, inits)
-save(G010_obj, file = "/home/hoanguc3m/Downloads/WP11/G010.RData")
+save(G010_obj, file = "G010.RData")
 
 inits$is_tv = c(1,0,0); G100_obj <- GaussTVPSV(y, y0, p, priors, inits)
-save(G100_obj, file = "/home/hoanguc3m/Downloads/WP11/G100.RData")
+save(G100_obj, file = "G100.RData")
 
 inits$is_tv = c(1,1,0); G110_obj <- GaussTVPSV(y, y0, p, priors, inits)
-save(G110_obj, file = "/home/hoanguc3m/Downloads/WP11/G110.RData")
+save(G110_obj, file = "G110.RData")
 
 inits$is_tv = c(0,1,1); G011_obj <- GaussTVPSV(y, y0, p, priors, inits)
-save(G011_obj, file = "/home/hoanguc3m/Downloads/WP11/G011.RData")
+save(G011_obj, file = "G011.RData")
 
 inits$is_tv = c(1,0,1); G101_obj <- GaussTVPSV(y, y0, p, priors, inits)
-save(G101_obj, file = "/home/hoanguc3m/Downloads/WP11/G101.RData")
+save(G101_obj, file = "G101.RData")
 
 inits$is_tv = c(1,1,1); G111_obj <- GaussTVPSV(y, y0, p, priors, inits)
-save(G111_obj, file = "/home/hoanguc3m/Downloads/WP11/G111.RData")
+save(G111_obj, file = "G111.RData")
 }
 ####################################################################
 {
 inits$is_tv = c(0,0,0); T000_obj <- StudentTVPSV(y, y0, p, priors, inits)
-save(T000_obj, file = "/home/hoanguc3m/Downloads/WP11/T000.RData")
+save(T000_obj, file = "T000.RData")
 
 inits$is_tv = c(0,0,1); T001_obj <- StudentTVPSV(y, y0, p, priors, inits)
-save(T001_obj, file = "/home/hoanguc3m/Downloads/WP11/T001.RData")
+save(T001_obj, file = "T001.RData")
 
 inits$is_tv = c(0,1,0); T010_obj <- StudentTVPSV(y, y0, p, priors, inits)
-save(T010_obj, file = "/home/hoanguc3m/Downloads/WP11/T010.RData")
+save(T010_obj, file = "T010.RData")
 
 inits$is_tv = c(1,0,0); T100_obj <- StudentTVPSV(y, y0, p, priors, inits)
-save(T100_obj, file = "/home/hoanguc3m/Downloads/WP11/T100.RData")
+save(T100_obj, file = "T100.RData")
 
 inits$is_tv = c(1,1,0); T110_obj <- StudentTVPSV(y, y0, p, priors, inits)
-save(T110_obj, file = "/home/hoanguc3m/Downloads/WP11/T110.RData")
+save(T110_obj, file = "T110.RData")
 
 inits$is_tv = c(0,1,1); T011_obj <- StudentTVPSV(y, y0, p, priors, inits)
-save(T011_obj, file = "/home/hoanguc3m/Downloads/WP11/T011.RData")
+save(T011_obj, file = "T011.RData")
 
 inits$is_tv = c(1,0,1); T101_obj <- StudentTVPSV(y, y0, p, priors, inits)
-save(T101_obj, file = "/home/hoanguc3m/Downloads/WP11/T101.RData")
+save(T101_obj, file = "T101.RData")
 
 inits$is_tv = c(1,1,1); T111_obj <- StudentTVPSV(y, y0, p, priors, inits)
-save(T111_obj, file = "/home/hoanguc3m/Downloads/WP11/T111.RData")
+save(T111_obj, file = "T111.RData")
 }
 ####################################################################
 
-
-library(fatBVARS)
+setwd("/home/hoanguc3m/Downloads/WP11/")
+# library(fatBVARS)
 library(ggplot2)
 library(gridExtra)
 library(cowplot)
@@ -115,13 +118,13 @@ p3 <- ggplot(data_nu, aes(x = Time, y = BAA)) +
   geom_line(color = "#e3625b") + xlab("BAA SPREAD") + ylab("") +
   geom_rect(data=recessions.df, inherit.aes=F, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='darkgray', alpha=0.5) + theme_bw()
 
-pdf(file='/home/hoanguc3m/Downloads/WP11/img/data.pdf', width = 9, height = 6)
+pdf(file='img/data.pdf', width = 9, height = 6)
 plot_grid(p1, p2, p3, ncol = 1, align = "v")
 #grid.arrange(p1, p2, p3, nrow = 3, ncol = 1)
 dev.off()
 ####################################################################
-load("/home/hoanguc3m/Downloads/WP11/T111.RData")
-load("/home/hoanguc3m/Downloads/WP11/T000.RData")
+load("T111.RData")
+load("T000.RData")
 Nu_mat111 <- T111_obj$store_nu
 Nu_mat000 <- T000_obj$store_nu
 ndraws <- nrow(Nu_mat000)
@@ -138,7 +141,7 @@ p1 <- gg_nu_mat(1)
 p2 <- gg_nu_mat(2)
 p3 <- gg_nu_mat(3)
 
-pdf(file='/home/hoanguc3m/Downloads/WP11/img/postNu.pdf', width = 12, height = 4)
+pdf(file='img/postNu.pdf', width = 12, height = 4)
 par(mar=c(2,5,3,1))
 grid.arrange(p1, p2, p3, nrow = 1, ncol = 3)
 dev.off()
@@ -156,7 +159,7 @@ p1 <- gg_sigma_mat(1)
 p2 <- gg_sigma_mat(2)
 p3 <- gg_sigma_mat(3)
 
-pdf(file='/home/hoanguc3m/Downloads/WP11/img/postSigmah.pdf', width = 12, height = 4)
+pdf(file='img/postSigmah.pdf', width = 12, height = 4)
 par(mar=c(2,5,3,1))
 grid.arrange(p1, p2, p3, nrow = 1, ncol = 3)
 dev.off()
@@ -179,7 +182,7 @@ l <- list()
 for (i in c(1:33)) l[[i]] <- gg_sigmaAB_mat(i)
 
 
-pdf(file='/home/hoanguc3m/Downloads/WP11/img/postSigmaAB.pdf', width = 12, height = 3*11)
+pdf(file='img/postSigmaAB.pdf', width = 12, height = 3*11)
 par(mar=c(2,5,3,1))
 plot_grid(l[[1]], l[[11]], l[[21]],
           l[[2]], l[[12]], l[[22]],
@@ -221,7 +224,7 @@ l <- list()
 for (i in c(1:33)) l[[i]] <- gg_TVPAB_mat(i)
 
 
-pdf(file='/home/hoanguc3m/Downloads/WP11/img/postAB.pdf', width = 12, height = 3*11)
+pdf(file='img/postAB.pdf', width = 12, height = 3*11)
 par(mar=c(2,5,3,1))
 plot_grid(l[[1]], l[[11]], l[[21]],
           l[[2]], l[[12]], l[[22]],

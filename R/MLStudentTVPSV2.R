@@ -1,5 +1,5 @@
 #' @export
-ML_StudentTVPSV <- function(Chain, numCores = 4){
+ML_StudentTVPSV2 <- function(Chain, numCores = 4){
   #Chain <- T111_obj
   data = Chain$data
   Y0 <- data$y0
@@ -111,7 +111,7 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
 
   Nu_gen_list <- Nu_Gamma_approx(Chain$store_nu, ndraws = M)
   Nu_gen <- Nu_gen_list$new_samples
-  w_mean <- apply(Chain$store_w, MARGIN = c(2,3), median)
+  w_mean <- apply(Chain$store_w, MARGIN = c(2,3), mean)
   h_mean <- apply(Chain$store_h, MARGIN = c(2,3), mean)
 
 
@@ -176,10 +176,10 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
         thetai0 = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
         thetaibar =  matrixcalc::vec( t(cbind( beta_mean[,((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp_mean[,count_seq] )))
 
-        llikei = intlike_Ttvpsv(Yi = shortY[,ii], wYi = wYi, Xi = Xi, wXi = wXi,
+        llikei = intlike_Ttvpsv2(Yi = shortY[,ii], wYi = wYi, Xi = Xi, wXi = wXi,
                                 Sigthetai = Sigthetai, Sig_hi = Sigh[ii], h0i = h0[ii],
                                 thetai0 = thetai0, nui = nu[ii], wi = w_mean[,ii],
-                                thetaibar = thetaibar)
+                                thetaibar = thetaibar, hbi = h_mean[,ii])
         #llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = SURform(Xi), h0i = h0[ii], thetai0 = thetai0)
       }  else {
         bigXi = X

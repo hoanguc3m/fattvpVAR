@@ -1,5 +1,5 @@
 #' @export
-denTy_h <- function(Yi,hc,Sigthetai,bigXi,thetai0,wsample){
+denTy_h2 <- function(Yi,hc,Sigthetai,bigXi,thetai0,wsample){
 
   K = 1
   t_max = length(hc)
@@ -35,7 +35,7 @@ denTy_h <- function(Yi,hc,Sigthetai,bigXi,thetai0,wsample){
 }
 
 #' @export
-intlike_Ttvpsv <- function(Yi,wYi, Xi, wXi, Sigthetai, Sig_hi, h0i, thetai0, nui, wi, thetaibar){
+intlike_Ttvpsv2 <- function(Yi,wYi, Xi, wXi, Sigthetai, Sig_hi, h0i, thetai0, nui, wi, thetaibar, hbi){
 
   bigXi = SURform(Xi)
   bigwXi = SURform(wXi)
@@ -131,16 +131,18 @@ intlike_Ttvpsv <- function(Yi,wYi, Xi, wXi, Sigthetai, Sig_hi, h0i, thetai0, nui
 
     R = 50
     store_llike = rep(0, R)
+
+    w_post_a <- (nui+1)*0.5
+    w_post_b <- as.numeric(nui*0.5 + 0.5*(Yi - bigXi %*% thetaibar )^2* exp(-hbi))
+
     for (i in c(1:R)){
       hc = ht + Matrix::solve(Matrix::t(Cg), rnorm(t_max*K))
-      w_post_a <- (nui+1)*0.5
-      w_post_b <- as.numeric(nui*0.5 + 0.5*(Yi - bigXi %*% thetaibar )^2* exp(-hc))
       ws <- mapply(rinvgamma, n = 1, shape = w_post_a, rate = w_post_b)
       wsample <- sqrt(ws)
       nYi = Yi / wsample
       nXi = Xi / wsample
       bignXi = SURform(nXi)
-      store_llike[i] = denTy_h(Yi = nYi, hc = hc, Sigthetai = Sigthetai,
+      store_llike[i] = denTy_h2(Yi = nYi, hc = hc, Sigthetai = Sigthetai,
                               bigXi = bignXi, thetai0 = thetai0, wsample = wsample) +
               (c_pri - 0.5*Matrix::t(hc-alph) %*% HinvSH_h %*% (hc-alph)) -
               (c_IS - 0.5*Matrix::t(hc-ht)%*%Kh%*%(hc-ht) ) +
