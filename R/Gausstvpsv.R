@@ -28,11 +28,17 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
   aalp0 <- matrix(0, nrow = k_alp, ncol = 1);
   Valp0 <- 10*matrix(1, nrow = k_alp, ncol = 1);
 
-  EstMdl1 <- arima(y[,1] ,order = c(1,0,0))
-  EstMdl2 <- arima(y[,2] ,order = c(1,0,0))
-  EstMdl3 <- arima(y[,3] ,order = c(1,0,0))
+  # EstMdl1 <- arima(y[,1] ,order = c(1,0,0))
+  # EstMdl2 <- arima(y[,2] ,order = c(1,0,0))
+  # EstMdl3 <- arima(y[,3] ,order = c(1,0,0))
+  #
+  # ah0 <- c(log(EstMdl1$sigma2), log(EstMdl2$sigma2), log(EstMdl3$sigma2))
+  # Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
+  EstMdl1 <- var(y[,1])
+  EstMdl2 <- var(y[,2])
+  EstMdl3 <- var(y[,3])
 
-  ah0 <- c(log(EstMdl1$sigma2), log(EstMdl1$sigma2), log(EstMdl1$sigma2))
+  ah0 <- c(log(EstMdl1), log(EstMdl2), log(EstMdl3))
   Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
 
   hyper_ab <- priors$hyper_ab
@@ -289,7 +295,7 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
   output <- list(store_h = store_h, store_alp = store_alp, store_beta = store_beta,
                  store_Sigbeta = store_Sigbeta, store_Sigalp = store_Sigalp, store_Sigh = store_Sigh,
                  store_beta0 = store_beta0, store_alp0 = store_alp0, store_h0 = store_h0,
-                 data = list(y = y, y0 = y0, p = p, priors = priors, inits = inits),
+                 data = list(y = y, y0 = y0, p = p, priors = priors, inits = inits, dist = "Gaussian"),
                  class = "GaussTVPSV")
   return(output)
 }

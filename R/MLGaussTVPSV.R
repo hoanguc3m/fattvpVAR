@@ -116,13 +116,19 @@ ML_GaussTVPSV <- function(Chain, numCores = 4){
   aalp0 <- matrix(0, nrow = k_alp, ncol = 1);
   Valp0 <- 10*matrix(1, nrow = k_alp, ncol = 1);
 
-  EstMdl1 <- arima(shortY[,1] ,order = c(1,0,0))
-  EstMdl2 <- arima(shortY[,2] ,order = c(1,0,0))
-  EstMdl3 <- arima(shortY[,3] ,order = c(1,0,0))
+  # EstMdl1 <- arima(shortY[,1] ,order = c(1,0,0))
+  # EstMdl2 <- arima(shortY[,2] ,order = c(1,0,0))
+  # EstMdl3 <- arima(shortY[,3] ,order = c(1,0,0))
+  #
+  # ah0 <- c(log(EstMdl1$sigma2), log(EstMdl2$sigma2), log(EstMdl3$sigma2))
+  # Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
 
-  ah0 <- c(log(EstMdl1$sigma2), log(EstMdl1$sigma2), log(EstMdl1$sigma2))
+  EstMdl1 <- var(shortY[,1])
+  EstMdl2 <- var(shortY[,2])
+  EstMdl3 <- var(shortY[,3])
+
+  ah0 <- c(log(EstMdl1), log(EstMdl2), log(EstMdl3))
   Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
-
 
   sum_log_prior <- apply( cbind(dgamma(Sigma_h_gen, shape = 0.5, rate = 0.5 / priors$hyper_h, log = T),
                            dgamma(Sigma_beta_gen[,idx_b_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),

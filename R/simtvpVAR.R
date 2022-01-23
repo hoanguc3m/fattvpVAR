@@ -35,11 +35,20 @@ sim.tvpVAR.SV <- function(dist, K = 3, p = 2, t_max = 1000,
 
 #' @export
 sim.tvpVAR.Gaussian.SV <- function(K = 3, p = 2, t_max = 1000,
-                                b0 = 0.5, a0 = 0.5, h = -3, sigma_ab = NULL, sigma_h = NULL,
-                                y0 = matrix(0, ncol = K, nrow = p),
-                                is_tv = NULL, seednum = 0, burn_in = 0){
+                                   b0 = 0.5, a0 = 0.5, h = -3, sigma_ab = NULL, sigma_h = NULL,
+                                   y0 = matrix(0, ncol = K, nrow = p),
+                                   is_tv = NULL, seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
+
+  # Identify the tvp element
+  k_alp <- K*(K-1)/2 # dimension of the impact matrix
+  k_beta <- K^2*p + K # number of VAR coefficients
+  k_beta_div_K <- K*p + 1
+  n_tv <- sum(is_tv)# # of time-varying equations
+  idx_b_tv <- (kronecker(is_tv,matrix(1,nrow = K*p+1,ncol = 1))==1)   # index for time-varying betas
+  idx_a_tv <- matrix(FALSE, nrow = k_alp, ncol = 1)            # construct index for time-varying alphas
+
   # Sample matrix coefficient B
   B0 <- B0_mat(b0, K, p)
 
@@ -58,26 +67,27 @@ sim.tvpVAR.Gaussian.SV <- function(K = 3, p = 2, t_max = 1000,
   if (is.null(sigma_h)){
     Vh <- seq(1e-2, 1e-2, length.out = K)
   } else {
-    Vh <-  rep(sigma_h,K)
+    if (length(sigma_h) == 1){
+      Vh <-  rep(sigma_h,K)
+    } else {
+      Vh <-  sigma_h
+    }
   }
 
   if (is.null(sigma_ab)){
-    V_ab <- (2e-3)
+    V_ab <- rep(2e-3,k_beta+k_alp)
   } else {
-    V_ab <- sigma_ab
+    if (length(sigma_ab) == 1){
+      V_ab <-  rep(sigma_ab,k_beta+k_alp)
+    } else {
+      V_ab <-  sigma_ab
+    }
   }
 
   if (is.null(is_tv)){
     is_tv <- rep(1,K)
   }
 
-  # Identify the tvp element
-  k_alp <- K*(K-1)/2 # dimension of the impact matrix
-  k_beta <- K^2*p + K # number of VAR coefficients
-  k_beta_div_K <- K*p + 1
-  n_tv <- sum(is_tv)# # of time-varying equations
-  idx_b_tv <- (kronecker(is_tv,matrix(1,nrow = K*p+1,ncol = 1))==1)   # index for time-varying betas
-  idx_a_tv <- matrix(FALSE, nrow = k_alp, ncol = 1)            # construct index for time-varying alphas
   count <- 0
   for (j in 2:K){
     if (is_tv[j] == 1){
@@ -86,9 +96,11 @@ sim.tvpVAR.Gaussian.SV <- function(K = 3, p = 2, t_max = 1000,
     count <- count + j-1
   }
 
+  V_b <- V_ab[1:k_beta]
+  V_a <- V_ab[(k_beta+1):(k_beta+k_alp)]
 
-  B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta) * V_ab, nrow = t_max), MARGIN = 2, FUN = cumsum)
-  A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(idx_a_tv, t_max) * apply(matrix(rnorm(t_max * k_alp) * V_ab, nrow = t_max), MARGIN = 2, FUN = cumsum)
+  B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(V_b, t_max) * reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta), nrow = t_max), MARGIN = 2, FUN = cumsum)
+  A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(V_a, t_max) *  apply(matrix(rnorm(t_max * k_alp) , nrow = t_max), MARGIN = 2, FUN = cumsum)
   H_t <- reprow( as.numeric(h), t_max) + apply(matrix(rnorm(t_max * K), nrow = t_max) * reprow(Vh, t_max), MARGIN = 2, FUN = cumsum)
 
   ystar <- tail(y0, p)
@@ -128,6 +140,15 @@ sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
                                   nu = 6, is_tv = NULL, seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
+
+  # Identify the tvp element
+  k_alp <- K*(K-1)/2 # dimension of the impact matrix
+  k_beta <- K^2*p + K # number of VAR coefficients
+  k_beta_div_K <- K*p + 1
+  n_tv <- sum(is_tv)# # of time-varying equations
+  idx_b_tv <- (kronecker(is_tv,matrix(1,nrow = K*p+1,ncol = 1))==1)   # index for time-varying betas
+  idx_a_tv <- matrix(FALSE, nrow = k_alp, ncol = 1)            # construct index for time-varying alphas
+
   # Sample matrix coefficient B
   B0 <- B0_mat(b0, K, p)
 
@@ -142,33 +163,35 @@ sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
   }
   # No skew
   # Tail of student
-  w_t <- matrix(rinvgamma(t_max*K, shape = nu/2, rate = nu/2), ncol = K)
+
+  w_t <- matrix(mapply(rinvgamma, n = t_max, shape = nu/2, rate = nu/2), ncol = K)
   w_sqrt_t <- sqrt(w_t)
 
   # Volatility volatility
   if (is.null(sigma_h)){
     Vh <- seq(1e-2, 1e-2, length.out = K)
   } else {
-    Vh <-  rep(sigma_h,K)
+    if (length(sigma_h) == 1){
+      Vh <-  rep(sigma_h,K)
+    } else {
+      Vh <-  sigma_h
+    }
   }
 
   if (is.null(sigma_ab)){
-    V_ab <- (2e-3)
+    V_ab <- rep(2e-3,k_beta+k_alp)
   } else {
-    V_ab <- sigma_ab
+    if (length(sigma_ab) == 1){
+      V_ab <-  rep(sigma_ab,k_beta+k_alp)
+    } else {
+      V_ab <-  sigma_ab
+    }
   }
 
   if (is.null(is_tv)){
     is_tv <- rep(1,K)
   }
 
-  # Identify the tvp element
-  k_alp <- K*(K-1)/2 # dimension of the impact matrix
-  k_beta <- K^2*p + K # number of VAR coefficients
-  k_beta_div_K <- K*p + 1
-  n_tv <- sum(is_tv)# # of time-varying equations
-  idx_b_tv <- (kronecker(is_tv,matrix(1,nrow = K*p+1,ncol = 1))==1)   # index for time-varying betas
-  idx_a_tv <- matrix(FALSE, nrow = k_alp, ncol = 1)            # construct index for time-varying alphas
   count <- 0
   for (j in 2:K){
     if (is_tv[j] == 1){
@@ -177,9 +200,11 @@ sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
     count <- count + j-1
   }
 
+  V_b <- V_ab[1:k_beta]
+  V_a <- V_ab[(k_beta+1):(k_beta+k_alp)]
 
-  B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta) * V_ab, nrow = t_max), MARGIN = 2, FUN = cumsum)
-  A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(idx_a_tv, t_max) * apply(matrix(rnorm(t_max * k_alp) * V_ab, nrow = t_max), MARGIN = 2, FUN = cumsum)
+  B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(V_b, t_max) * reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta), nrow = t_max), MARGIN = 2, FUN = cumsum)
+  A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(V_a, t_max) *  apply(matrix(rnorm(t_max * k_alp) , nrow = t_max), MARGIN = 2, FUN = cumsum)
   H_t <- reprow( as.numeric(h), t_max) + apply(matrix(rnorm(t_max * K), nrow = t_max) * reprow(Vh, t_max), MARGIN = 2, FUN = cumsum)
 
   ystar <- tail(y0, p)

@@ -81,6 +81,14 @@ T111_ML <- ML_StudentTVPSV(Chain = T111_obj, numCores = numCores)
 save(T111_ML, file = "T111_ML.RData")
 
 
+setwd("/home/hoanguc3m/Downloads/WP11/ML")
+load("G000_ML.RData"); load("G001_ML.RData"); load("G010_ML.RData"); load("G100_ML.RData")
+load("G011_ML.RData"); load("G101_ML.RData"); load("G110_ML.RData"); load("G111_ML.RData")
+
+load("T000_ML.RData"); load("T001_ML.RData"); load("T010_ML.RData"); load("T100_ML.RData")
+load("T011_ML.RData"); load("T101_ML.RData"); load("T110_ML.RData"); load("T111_ML.RData")
+
+
 xtable::xtable(
   round(rbind(c(G000_ML$LL, G100_ML$LL, G010_ML$LL, G001_ML$LL, G110_ML$LL, G101_ML$LL, G011_ML$LL, G111_ML$LL),
               c(T000_ML$LL, T100_ML$LL, T010_ML$LL, T001_ML$LL, T110_ML$LL, T101_ML$LL, T011_ML$LL, T111_ML$LL)), digits = 2)

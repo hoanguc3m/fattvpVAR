@@ -88,8 +88,7 @@ library(cowplot)
 library(ggthemr)
 ggthemr('light')
 
-Time <- seq(as.Date("1953/04/01"), as.Date("2021/02/01"), "months")
-#load("/home/hoanguc3m/MEGA/WP5/MCMC/MonthlyData_Chain10.RData")
+Time <- seq(as.Date("1953/04/01"), as.Date("2021/08/01"), "months")
 recessions.df = read.table(textConnection(
   "Peak, Trough
   1953-08-01, 1954-06-01
@@ -101,7 +100,8 @@ recessions.df = read.table(textConnection(
   1981-07-01, 1982-11-01
   1990-07-01, 1991-03-01
   2001-03-01, 2001-11-01
-  2007-12-01, 2009-06-01"), sep=',',
+  2007-12-01, 2009-06-01
+  2020-03-01, 2020-05-01"), sep=',',
   colClasses=c('Date', 'Date'), header=TRUE)
 data_nu <- data.frame(Time = Time, TBILL = dataraw$TBILL3M, S10M3M = dataraw$S10MINUS3M,
                       BAA = dataraw$BAA_SPREAD)
@@ -115,7 +115,7 @@ p2 <- ggplot(data_nu, aes(x = Time, y = S10M3M)) +
   geom_rect(data=recessions.df, inherit.aes=F, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='darkgray', alpha=0.5) + theme_bw()
 
 p3 <- ggplot(data_nu, aes(x = Time, y = BAA)) +
-  geom_line(color = "#e3625b") + xlab("BAA SPREAD") + ylab("") +
+  geom_line(color = "#e3625b") + xlab("BAA spread") + ylab("") +
   geom_rect(data=recessions.df, inherit.aes=F, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='darkgray', alpha=0.5) + theme_bw()
 
 pdf(file='img/data.pdf', width = 9, height = 6)
@@ -128,7 +128,7 @@ load("T000.RData")
 Nu_mat111 <- T111_obj$store_nu
 Nu_mat000 <- T000_obj$store_nu
 ndraws <- nrow(Nu_mat000)
-varname <- c("TBILL 3M", "S10-3M", "BAA SPREAD")
+varname <- c("TBILL 3M", "S10-3M", "BAA spread")
 gg_nu_mat <- function(i){
   data_nu <- data.frame(nu = c(Nu_mat000[,i], Nu_mat111[,i]), Models = c(rep("T000", ndraws), rep("T111", ndraws)))
   max_nu <- max(c(Nu_mat000[,i], Nu_mat111[,i]))
@@ -207,7 +207,7 @@ ab111_q90 <- cbind( apply(T111_obj$store_beta, MARGIN = c(2,3), FUN = quantile, 
                     apply(T111_obj$store_alp, MARGIN = c(2,3), FUN = quantile, probs = c(0.9)))
 
 gg_TVPAB_mat <- function(i){
-  Time <- tail(seq(as.Date("1953/04/01"), as.Date("2021/02/01"), "months"), 812)
+  Time <- tail(seq(as.Date("1953/04/01"), as.Date("2021/08/01"), "months"), 818)
 
   data_nu <- data.frame(Time = Time, AB_mean = ab111_mean[,i])
 

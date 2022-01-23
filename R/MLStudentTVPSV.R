@@ -111,7 +111,7 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
 
   Nu_gen_list <- Nu_Gamma_approx(Chain$store_nu, ndraws = M)
   Nu_gen <- Nu_gen_list$new_samples
-  w_mean <- apply(Chain$store_w, MARGIN = c(2,3), median)
+  w_mean <- apply(Chain$store_w, MARGIN = c(2,3), mean)
   h_mean <- apply(Chain$store_h, MARGIN = c(2,3), mean)
 
 
@@ -126,75 +126,88 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
   Valp0 <- 10*matrix(1, nrow = k_alp, ncol = 1);
   nu_gam_a <- 2; nu_gam_b <- 0.1;
 
-  EstMdl1 <- arima(shortY[,1] ,order = c(1,0,0))
-  EstMdl2 <- arima(shortY[,2] ,order = c(1,0,0))
-  EstMdl3 <- arima(shortY[,3] ,order = c(1,0,0))
+  # EstMdl1 <- arima(shortY[,1] ,order = c(1,0,0))
+  # EstMdl2 <- arima(shortY[,2] ,order = c(1,0,0))
+  # EstMdl3 <- arima(shortY[,3] ,order = c(1,0,0))
+  #
+  # ah0 <- c(log(EstMdl1$sigma2), log(EstMdl2$sigma2), log(EstMdl3$sigma2))
+  # Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
 
-  ah0 <- c(log(EstMdl1$sigma2), log(EstMdl1$sigma2), log(EstMdl1$sigma2))
+  EstMdl1 <- var(shortY[,1])
+  EstMdl2 <- var(shortY[,2])
+  EstMdl3 <- var(shortY[,3])
+
+  ah0 <- c(log(EstMdl1), log(EstMdl2), log(EstMdl3))
   Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
 
 
   sum_log_prior <- apply( cbind(dgamma(Sigma_h_gen, shape = 0.5, rate = 0.5 / priors$hyper_h, log = T),
-                           dgamma(Sigma_beta_gen[,idx_b_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
-                           dgamma(Sigma_alp_gen[,idx_a_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
-                           dnorm(h0_gen, mean = ah0, sd = sqrt(Vh0), log = T),
-                           dnorm(beta0_gen, mean = abeta0, sd = sqrt(Vbeta0), log = T),
-                           dnorm(alp0_gen, mean = aalp0, sd = sqrt(Valp0), log = T),
-                           dgamma(Nu_gen, shape = nu_gam_a, rate = nu_gam_b, log = T)),  MARGIN = 1, FUN = sum)
+                                dgamma(Sigma_beta_gen[,idx_b_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
+                                dgamma(Sigma_alp_gen[,idx_a_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
+                                dnorm(h0_gen, mean = ah0, sd = sqrt(Vh0), log = T),
+                                dnorm(beta0_gen, mean = abeta0, sd = sqrt(Vbeta0), log = T),
+                                dnorm(alp0_gen, mean = aalp0, sd = sqrt(Valp0), log = T),
+                                dgamma(Nu_gen, shape = nu_gam_a, rate = nu_gam_b, log = T)),  MARGIN = 1, FUN = sum)
 
   #sum_log = rep(0, M);
   RhpcBLASctl::blas_set_num_threads(1)
 
   sum_log <- parallel::mclapply(1:M,
-                     FUN = function(j) {
-    Sigbeta = Sigma_beta_gen[j, ]
-    Sigalp = Sigma_alp_gen[j, ]
-    Sigh = Sigma_h_gen[j, ]
-    beta0 = beta0_gen[j, ]
-    alp0 = alp0_gen[j, ]
-    h0 = h0_gen[j, ]
-    nu = Nu_gen[j, ]
+                                FUN = function(j) {
+                                  Sigbeta = Sigma_beta_gen[j, ]
+                                  Sigalp = Sigma_alp_gen[j, ]
+                                  Sigh = Sigma_h_gen[j, ]
+                                  beta0 = beta0_gen[j, ]
+                                  alp0 = alp0_gen[j, ]
+                                  h0 = h0_gen[j, ]
+                                  nu = Nu_gen[j, ]
 
-    count = 0
-    llike = 0
-    for (ii in c(1:K)){
-      if (ii == 1){
-        count_seq <- 0
-        X <- X2
-      } else {
-        count_seq <- (count+1):(count+ii-1)
-        X <- cbind(X2, -shortY[,1:(ii-1)])
-      }
+                                  count = 0
+                                  llike = 0
+                                  for (ii in c(1:K)){
+                                    if (ii == 1){
+                                      count_seq <- 0
+                                      X <- X2
+                                    } else {
+                                      count_seq <- (count+1):(count+ii-1)
+                                      X <- cbind(X2, -shortY[,1:(ii-1)])
+                                    }
 
 
-      if (is_tv[ii] == 1){
-        Xi = X
-        wXi = X / sqrt(w_mean[,ii])
-        wYi = shortY[,ii] / sqrt(w_mean[,ii])
+                                    if (is_tv[ii] == 1){
+                                      Xi = X
+                                      Sigthetai = c( Sigbeta[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], Sigalp[count_seq])
+                                      thetai0 = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
+                                      if (nu[ii] < 30){
+                                        llikei = intlike_Ttvpsv(Yi = shortY[,ii], Xi = Xi,
+                                                                Sigthetai = Sigthetai, Sig_hi = Sigh[ii], h0i = h0[ii],
+                                                                thetai0 = thetai0, nui = nu[ii])
+                                      } else {
+                                        llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = SURform(X), h0i = h0[ii], thetai0 = thetai0)
+                                      }
 
-        Sigthetai = c( Sigbeta[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], Sigalp[count_seq])
-        thetai0 = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
-        thetaibar =  matrixcalc::vec( t(cbind( beta_mean[,((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp_mean[,count_seq] )))
+                                      #llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = SURform(X), h0i = h0[ii], thetai0 = thetai0)
 
-        llikei = intlike_Ttvpsv(Yi = shortY[,ii], wYi = wYi, Xi = Xi, wXi = wXi,
-                                Sigthetai = Sigthetai, Sig_hi = Sigh[ii], h0i = h0[ii],
-                                thetai0 = thetai0, nui = nu[ii], wi = w_mean[,ii],
-                                thetaibar = thetaibar)
-        #llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = SURform(Xi), h0i = h0[ii], thetai0 = thetai0)
-      }  else {
-        bigXi = X
-        thetai = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
-        llikei = intlike_Tvarsv(Yi = shortY[,ii], thetai = thetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], nui = nu[ii], wi = w_mean[,ii]);
-      }
 
-      llike = llike + llikei
-      count = count + ii-1
+                                    }  else {
+                                      bigXi = X
+                                      thetai = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
+                                      if (nu[ii] < 30){
+                                        llikei = intlike_Tvarsv(Yi = shortY[,ii], thetai = thetai, Sig_hi = Sigh[ii], bigXi = bigXi,
+                                                              h0i = h0[ii], nui = nu[ii], wi = w_mean[,ii]);
+                                      } else {
+                                        llikei = intlike_varsv(Yi = shortY[,ii], thetai = thetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii]);
+                                      }
+                                    }
 
-    }
+                                    llike = llike + llikei
+                                    count = count + ii-1
 
-    llike
+                                  }
 
-    }, mc.cores = numCores)
+                                  llike
+
+                                }, mc.cores = numCores)
   sum_log = unlist(sum_log)
 
   store_w = sum_log + sum_log_prior - sum_log_prop
