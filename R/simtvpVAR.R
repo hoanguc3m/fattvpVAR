@@ -23,7 +23,7 @@
 sim.tvpVAR.SV <- function(dist, K = 3, p = 2, t_max = 1000,
                        b0 = 0.5, a0 = 0.5, h = -3, sigma_ab = NULL, sigma_h = NULL,
                        y0 = matrix(0, ncol = K, nrow = p),
-                       nu = 6, is_tv = NULL,
+                       nu = 6, is_tv = rep(0,K),
                        seednum = 0, burn_in = 0){
   if (!(dist %in% c("Gaussian","Student") ))
     stop("dist is not implemented.")
@@ -37,7 +37,7 @@ sim.tvpVAR.SV <- function(dist, K = 3, p = 2, t_max = 1000,
 sim.tvpVAR.Gaussian.SV <- function(K = 3, p = 2, t_max = 1000,
                                    b0 = 0.5, a0 = 0.5, h = -3, sigma_ab = NULL, sigma_h = NULL,
                                    y0 = matrix(0, ncol = K, nrow = p),
-                                   is_tv = NULL, seednum = 0, burn_in = 0){
+                                   is_tv = rep(0,K), seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
 
@@ -137,7 +137,7 @@ sim.tvpVAR.Gaussian.SV <- function(K = 3, p = 2, t_max = 1000,
 sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
                                   b0 = 0.5, a0 = 0.5, h = -3, sigma_ab = NULL, sigma_h = NULL,
                                   y0 = matrix(0, ncol = K, nrow = p),
-                                  nu = 6, is_tv = NULL, seednum = 0, burn_in = 0){
+                                  nu = 6, is_tv = rep(0,K), seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
 
@@ -164,7 +164,7 @@ sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
   # No skew
   # Tail of student
 
-  w_t <- matrix(mapply(rinvgamma, n = t_max, shape = nu/2, rate = nu/2), ncol = K)
+  w_t <- matrix(mapply(rinvgamma, n = K*t_max, shape = nu/2, rate = nu/2), ncol = K)
   w_sqrt_t <- sqrt(w_t)
 
   # Volatility volatility
@@ -265,7 +265,7 @@ sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
 sim.tvpVAR.nonSV <- function(dist, K = 3, p = 2, t_max = 1000,
                           b0 = 0.5, a0 = 0.5, h = -3, sigma_ab = NULL,
                           y0 = matrix(0, ncol = K, nrow = p),
-                          nu = 6, is_tv = NULL,
+                          nu = 6, is_tv = rep(0,K),
                           seednum = 0, burn_in = 0){
   if (!(dist %in% c("Gaussian","Student") ))
     stop("dist is not implemented.")
@@ -279,7 +279,7 @@ sim.tvpVAR.nonSV <- function(dist, K = 3, p = 2, t_max = 1000,
 sim.tvpVAR.Gaussian.nonSV <- function(K = 3, p = 2, t_max = 1000,
                                    b0 = 0.5, a0 = 0.5, h = -3, sigma_ab = NULL,
                                    y0 = matrix(0, ncol = K, nrow = p),
-                                   is_tv = NULL, seednum = 0, burn_in = 0){
+                                   is_tv = rep(0,K), seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
   # Sample matrix coefficient B
@@ -359,7 +359,7 @@ sim.tvpVAR.Gaussian.nonSV <- function(K = 3, p = 2, t_max = 1000,
 sim.tvpVAR.Student.nonSV <- function(K = 3, p = 2, t_max = 1000,
                                   b0 = 0.5, a0 = 0.5, h = -3, sigma_ab = NULL,
                                   y0 = matrix(0, ncol = K, nrow = p),
-                                  nu = 6, is_tv = NULL, seednum = 0, burn_in = 0){
+                                  nu = 6, is_tv = rep(0,K), seednum = 0, burn_in = 0){
   t_max = t_max + burn_in
   set.seed(seednum)
   # Sample matrix coefficient B

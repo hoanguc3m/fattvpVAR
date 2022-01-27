@@ -4,11 +4,11 @@ library(fattvpVAR)
 library(profvis)
 library(invgamma)
 
-datagenG <- sim.tvpVAR.SV(dist="Gaussian", h = -3, sigma_ab = 5e-3, sigma_h = 3e-2, b0 = 0.5, a0 = 0.1 )
+datagenG <- sim.tvpVAR.SV(dist="Gaussian", h = -3, sigma_ab = 5e-3, sigma_h = 3e-2, b0 = 0.5, a0 = 0.1, is_tv = c(1,1,1) )
 matplot(datagenG$y, type = "l")
-# datagenS <- sim.tvpVAR.SV(dist="Student")
-# plot(datagenS$y[,1])
-#
+datagenS <- sim.tvpVAR.SV(dist="Student", h = -3, sigma_ab = 5e-3, sigma_h = 3e-2, b0 = 0.5, a0 = 0.1 )
+plot(datagenS$y[,1])
+
 # datagenG <- sim.tvpVAR.nonSV(dist="Gaussian")
 # plot(datagenG$y[,1])
 # datagenS <- sim.tvpVAR.nonSV(dist="Student")

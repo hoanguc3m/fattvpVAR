@@ -66,7 +66,7 @@ A0_mat <- function(a0, K){
 }
 
 #' @export
-Sigma_sample <- function(Beta, Beta0, Sigma_Beta, Prior_Beta, t_max){
+Sigma_sample <- function(Beta, Beta0, Prior_Beta, t_max){
   K <- ncol(Beta)
   if (K>1) {
     sse_2 <- apply( (Beta - rbind(Beta0,Beta[1:(t_max-1),]) )^2, MARGIN = 2, FUN = sum)
@@ -74,21 +74,25 @@ Sigma_sample <- function(Beta, Beta0, Sigma_Beta, Prior_Beta, t_max){
     sse_2 <- sum( (Beta - c(Beta0,Beta[1:(t_max-1),]) )^2 )
   }
 
-  # Normal prior
-  # Equation 9 in https://doi.org/10.1016/j.csda.2013.01.002
-  sigma_post_a <- rep(t_max,K) # prior of sigma_h Gamma(1,0.0001)
-  sigma_post_b <- sse_2 # prior of sigma_h
+  # # Normal prior
+  # # Equation 9 in https://doi.org/10.1016/j.csda.2013.01.002
+  # sigma_post_a <- rep(t_max,K) # prior of sigma_h Gamma(1,0.0001)
+  # sigma_post_b <- sse_2 # prior of sigma_h
+  #
+  # for (i in c(1:K)){
+  #   sigma_new <- rinvgamma(1, shape = sigma_post_a[i] * 0.5, rate = sigma_post_b[i] * 0.5)
+  #   alpha = 0.5 * (Sigma_Beta[i] - sigma_new) / Prior_Beta[i] + 0.5 * (log(sigma_new) - log(Sigma_Beta[i])) # B_sigma = 1
+  #   temp = log(runif(1))
+  #   if (alpha > temp){
+  #     Sigma_Beta[i] <- sigma_new
+  #   }
+  #   #log_sigma_den[]
+  # }
 
-  for (i in c(1:K)){
-    sigma_new <- rinvgamma(1, shape = sigma_post_a[i] * 0.5, rate = sigma_post_b[i] * 0.5)
-    alpha = 0.5 * (Sigma_Beta[i] - sigma_new) / Prior_Beta[i] + 0.5 * (log(sigma_new) - log(Sigma_Beta[i])) # B_sigma = 1
-    temp = log(runif(1))
-    if (alpha > temp){
-      Sigma_Beta[i] <- sigma_new
-    }
-    #log_sigma_den[]
-  }
-  return(Sigma_Beta)
+  sigma_h <- mapply( GIGrvg::rgig, n = 1, lambda = - (t_max - 1)*0.5, chi = sse_2,
+                          psi = 1/Prior_Beta )
+
+  return(sigma_h)
 }
 
 

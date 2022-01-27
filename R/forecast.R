@@ -2,7 +2,7 @@
 #' Forecast future observations of tvpVAR model
 #'
 #' This function returns a forecast future observations of TVP-VAR-SV model.
-#' @param Chain The TVP-VAR-SV object from command GaussTVPSV/StudentTVPSV
+#' @param Chain The TVP-VAR-SV object from command fitTVPGaussSV/fitTVPStudentSV
 #' @param t_pred The time prediction horizon.
 #' @return The list of forecast future observations of BVAR model
 #' @export
@@ -41,15 +41,15 @@ get_forecast <- function(Chain, y0 = NULL, t_pred = 24, Nfsample = NULL){
 
   store_h <- Chain$store_h
   store_h0 <- Chain$store_h0
-  store_Sigh <- Chain$store_Sigh
+  store_Sigh <- sqrt(Chain$store_Sigh) # get sd
 
   store_alp <- Chain$store_alp
   store_alp0 <- Chain$store_alp0
-  store_Sigalp <- Chain$store_Sigalp
+  store_Sigalp <- sqrt(Chain$store_Sigalp) # get sd
 
   store_beta <- Chain$store_beta
   store_beta0 <- Chain$store_beta0
-  store_Sigbeta <- Chain$store_Sigbeta
+  store_Sigbeta <- sqrt(Chain$store_Sigbeta) # get sd
 
   store_nu <- Chain$store_nu
 
@@ -70,7 +70,7 @@ get_forecast <- function(Chain, y0 = NULL, t_pred = 24, Nfsample = NULL){
     Sigbeta <- store_Sigbeta[i,]
 
     if (dist == "Gaussian") {
-        b0 <- beta; a0 <- alp; h <- h; sigma_ab <- c(Sigbeta, Sigalp); sigma_h <- Sigh;
+        b0 <- beta; a0 <- alp; h <- h; sigma_ab <- c(Sigbeta, Sigalp); sigma_h <- Sigh; t_max = t_pred
         pred_tmp <- sim.tvpVAR.Gaussian.SV(K = K, p = p, t_max = t_pred,
                                            b0 = beta, a0 = alp, h = h,
                                            sigma_ab = c(Sigbeta, Sigalp), sigma_h = Sigh,
@@ -81,7 +81,7 @@ get_forecast <- function(Chain, y0 = NULL, t_pred = 24, Nfsample = NULL){
 
     if (dist == "Student") {
         nu <- store_nu[i,]
-        b0 <- beta; a0 <- alp; h <- h; sigma_ab <- c(Sigbeta, Sigalp); sigma_h <- Sigh;
+        b0 <- beta; a0 <- alp; h <- h; sigma_ab <- c(Sigbeta, Sigalp); sigma_h <- Sigh; t_max = t_pred
         pred_tmp <- sim.tvpVAR.Student.SV(K = K, p = p, t_max = t_pred,
                                           b0 = beta, a0 = alp, h = h,
                                           sigma_ab = c(Sigbeta, Sigalp), sigma_h = Sigh,
@@ -242,10 +242,10 @@ recursive_seperate <- function(y_raw, is_tv, t_start = 100, t_pred = 24, K = nco
   inits$is_tv <- is_tv
 
   if (dist == "Gaussian") {
-    Chain <- GaussTVPSV(y = y_current, y0, p, priors, inits)
+    Chain <- fitTVPGaussSV(y = y_current, y0, p, priors, inits)
   }
   if (dist == "Student") {
-    Chain <- StudentTVPSV(y = y_current, y0, p, priors, inits)
+    Chain <- fitTVPStudentSV(y = y_current, y0, p, priors, inits)
   }
 
   y_obs_future <- as.matrix(y_raw[c((time_current+1):(time_current+t_pred)), ],ncol = K)

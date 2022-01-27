@@ -27,55 +27,55 @@ RhpcBLASctl::blas_set_num_threads(2)
 
 ####################################################################
 {
-inits$is_tv = c(0,0,0); G000_obj <- GaussTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(0,0,0); G000_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
 save(G000_obj, file = "G000.RData")
 
 
-inits$is_tv = c(0,0,1); G001_obj <- GaussTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(0,0,1); G001_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
 save(G001_obj, file = "G001.RData")
 
-inits$is_tv = c(0,1,0); G010_obj <- GaussTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(0,1,0); G010_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
 save(G010_obj, file = "G010.RData")
 
-inits$is_tv = c(1,0,0); G100_obj <- GaussTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(1,0,0); G100_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
 save(G100_obj, file = "G100.RData")
 
-inits$is_tv = c(1,1,0); G110_obj <- GaussTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(1,1,0); G110_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
 save(G110_obj, file = "G110.RData")
 
-inits$is_tv = c(0,1,1); G011_obj <- GaussTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(0,1,1); G011_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
 save(G011_obj, file = "G011.RData")
 
-inits$is_tv = c(1,0,1); G101_obj <- GaussTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(1,0,1); G101_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
 save(G101_obj, file = "G101.RData")
 
-inits$is_tv = c(1,1,1); G111_obj <- GaussTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(1,1,1); G111_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
 save(G111_obj, file = "G111.RData")
 }
 ####################################################################
 {
-inits$is_tv = c(0,0,0); T000_obj <- StudentTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(0,0,0); T000_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
 save(T000_obj, file = "T000.RData")
 
-inits$is_tv = c(0,0,1); T001_obj <- StudentTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(0,0,1); T001_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
 save(T001_obj, file = "T001.RData")
 
-inits$is_tv = c(0,1,0); T010_obj <- StudentTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(0,1,0); T010_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
 save(T010_obj, file = "T010.RData")
 
-inits$is_tv = c(1,0,0); T100_obj <- StudentTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(1,0,0); T100_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
 save(T100_obj, file = "T100.RData")
 
-inits$is_tv = c(1,1,0); T110_obj <- StudentTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(1,1,0); T110_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
 save(T110_obj, file = "T110.RData")
 
-inits$is_tv = c(0,1,1); T011_obj <- StudentTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(0,1,1); T011_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
 save(T011_obj, file = "T011.RData")
 
-inits$is_tv = c(1,0,1); T101_obj <- StudentTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(1,0,1); T101_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
 save(T101_obj, file = "T101.RData")
 
-inits$is_tv = c(1,1,1); T111_obj <- StudentTVPSV(y, y0, p, priors, inits)
+inits$is_tv = c(1,1,1); T111_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
 save(T111_obj, file = "T111.RData")
 }
 ####################################################################
@@ -132,7 +132,7 @@ varname <- c("TBILL 3M", "S10-3M", "BAA spread")
 gg_nu_mat <- function(i){
   data_nu <- data.frame(nu = c(Nu_mat000[,i], Nu_mat111[,i]), Models = c(rep("T000", ndraws), rep("T111", ndraws)))
   max_nu <- max(c(Nu_mat000[,i], Nu_mat111[,i]))
-  ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) +
+  ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) + scale_colour_ggthemr_d() +
     geom_histogram(position = "identity", alpha = 0.8, bins = 30) + xlim(0,max_nu) +
     geom_density(position = "identity", alpha = 0.5) + ylab(expression(nu)) + xlab(varname[i]) + theme_bw() + theme(legend.position="bottom")
 }
@@ -151,7 +151,7 @@ Sigma_h000 <- T000_obj$store_Sigh
 gg_sigma_mat <- function(i){
   data_nu <- data.frame(nu = c(Sigma_h000[,i], Sigma_h111[,i]), Models = c(rep("T000", ndraws), rep("T111", ndraws)))
   max_nu <- max(c(Sigma_h000[,i], Sigma_h111[,i]))
-  ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) +
+  ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) + scale_colour_ggthemr_d() +
     geom_histogram(position = "identity", alpha = 0.8, bins = 30) + xlim(0,max_nu) +
     geom_density(position = "identity", alpha = 0.5) + ylab(expression(sigma[h]^2)) + xlab(varname[i]) + theme_bw() + theme(legend.position="bottom")
 }
@@ -174,7 +174,7 @@ varname <- c("b[1]", "B1[1,1]", "B1[1,2]", "B1[1,3]", "B2[1,1]", "B2[1,2]", "B2[
 gg_sigmaAB_mat <- function(i){
   data_nu <- data.frame(nu = c((Sigma_ab111[,i])) , Models = c(rep("T111", ndraws)))
   max_nu <- (max(c(Sigma_ab111[,i])))
-  ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) +
+  ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) + scale_colour_ggthemr_d() +
     geom_histogram(position = "identity", alpha = 0.8, bins = 30) + xlim(0,max_nu) +
     geom_density(position = "identity", alpha = 0.5) + xlab(bquote(.(varname[i]))) + ylab(expression(sigma^2)) + theme_bw() + theme(legend.position="bottom")
 }
@@ -213,7 +213,7 @@ gg_TVPAB_mat <- function(i){
 
   data_nu1 <- data.frame(Time = c(Time, rev(Time)) ,
                          AB_UL = c(ab111_q10[,i], rev(ab111_q90[,i])))
-  ggplot() + geom_line(data=data_nu, mapping=aes(x=Time, y=AB_mean), color = "#ff0c00") +
+  ggplot() + geom_line(data=data_nu, mapping=aes(x=Time, y=AB_mean), color = "#ff0c00") + scale_colour_ggthemr_d() +
     geom_polygon(data=data_nu1, mapping=aes(x=Time, y=AB_UL), fill = "#5ba6d6", alpha = 0.5) +
     xlab(bquote(.(varname[i]))) + ylab("") + theme_bw() + theme(legend.position="bottom") + theme(plot.title = element_text(hjust = 0.5)) +
     geom_rect(data=recessions.df, inherit.aes=F, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='darkgray', alpha=0.5)
@@ -237,5 +237,39 @@ plot_grid(l[[1]], l[[11]], l[[21]],
           l[[9]], l[[19]], l[[29]],
           l[[10]], l[[20]], l[[30]],
           l[[31]], l[[32]], l[[33]],
+          ncol = 3, byrow = TRUE)
+dev.off()
+
+####################################################################
+h111_mean <- ( apply(T111_obj$store_h, MARGIN = c(2,3), FUN = mean))
+h111_q10 <- ( apply(T111_obj$store_h, MARGIN = c(2,3), FUN = quantile, probs = c(0.1)))
+h111_q90 <- ( apply(T111_obj$store_h, MARGIN = c(2,3), FUN = quantile, probs = c(0.9)) )
+varname <- c("H[1]", "H[2]", "H[3]")
+gg_H_mat <- function(i){
+  Time <- tail(seq(as.Date("1953/04/01"), as.Date("2021/08/01"), "months"), 818)
+
+  data_nu <- data.frame(Time = Time, H_mean = h111_mean[,i])
+
+  data_nu1 <- data.frame(Time = c(Time, rev(Time)) ,
+                         H_UL = c(h111_q10[,i], rev(h111_q90[,i])))
+  miny <- min(h111_q10[,i]) - 0.3
+  maxy <- max(h111_q90[,i]) + 0.3
+
+  ggplot() + geom_line(data=data_nu, mapping=aes(x=Time, y=H_mean), color = "#ff0c00") + ylim(c(miny, maxy)) +
+    geom_polygon(data=data_nu1, mapping=aes(x=Time, y=H_UL), fill = "#5ba6d6", alpha = 0.5) +
+    xlab(bquote(.(varname[i]))) + ylab("") + theme_bw() + theme(legend.position="bottom") + theme(plot.title = element_text(hjust = 0.5)) +
+    geom_rect(data=recessions.df, inherit.aes=F, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf), fill='darkgray', alpha=0.5)
+
+}
+
+l <- list()
+for (i in c(1:3)) l[[i]] <- gg_H_mat(i)
+
+
+
+
+pdf(file='img/postH.pdf', width = 12, height = 3)
+par(mar=c(2,5,3,1))
+plot_grid(l[[1]], l[[2]], l[[3]],
           ncol = 3, byrow = TRUE)
 dev.off()

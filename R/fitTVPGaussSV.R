@@ -1,5 +1,5 @@
 #' @export
-GaussTVPSV <- function(y, y0, p, priors, inits){
+fitTVPGaussSV <- function(y, y0, p, priors, inits){
 
   Y0 <- y0
   shortY <- y
@@ -28,18 +28,18 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
   aalp0 <- matrix(0, nrow = k_alp, ncol = 1);
   Valp0 <- 10*matrix(1, nrow = k_alp, ncol = 1);
 
-  # EstMdl1 <- arima(y[,1] ,order = c(1,0,0))
-  # EstMdl2 <- arima(y[,2] ,order = c(1,0,0))
-  # EstMdl3 <- arima(y[,3] ,order = c(1,0,0))
-  #
-  # ah0 <- c(log(EstMdl1$sigma2), log(EstMdl2$sigma2), log(EstMdl3$sigma2))
-  # Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
-  EstMdl1 <- var(y[,1])
-  EstMdl2 <- var(y[,2])
-  EstMdl3 <- var(y[,3])
+  EstMdl1 <- arima(y[,1] ,order = c(p,0,0))
+  EstMdl2 <- arima(y[,2] ,order = c(p,0,0))
+  EstMdl3 <- arima(y[,3] ,order = c(p,0,0))
 
-  ah0 <- c(log(EstMdl1), log(EstMdl2), log(EstMdl3))
+  ah0 <- c(log(EstMdl1$sigma2), log(EstMdl2$sigma2), log(EstMdl3$sigma2))
   Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
+  # EstMdl1 <- var(y[,1])
+  # EstMdl2 <- var(y[,2])
+  # EstMdl3 <- var(y[,3])
+  #
+  # ah0 <- c(log(EstMdl1), log(EstMdl2), log(EstMdl3))
+  # Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
 
   hyper_ab <- priors$hyper_ab
   hyper_h <- priors$hyper_h
@@ -71,12 +71,12 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
     X2[,((ii-1)*K+1):(ii*K)] <- tmpY[(p-ii+1):(t_max+p-ii),]
   }
   X2 <- cbind(rep(1, t_max), X2)
-  X1 <- matrix(0, K*t_max,k_alp)
-  count <- 0
-  for (ii in 2:K){
-    X1[seq(ii,K*t_max,by = K),(count+1):(count+ii-1)] <- - shortY[,1:ii-1]
-    count <- count + ii-1
-  }
+  # X1 <- matrix(0, K*t_max,k_alp)
+  # count <- 0
+  # for (ii in 2:K){
+  #   X1[seq(ii,K*t_max,by = K),(count+1):(count+ii-1)] <- - shortY[,1:ii-1]
+  #   count <- count + ii-1
+  # }
 
   idx_b_tv <- (kronecker(is_tv,matrix(1,nrow = K*p+1,ncol = 1))==1)   # index for time-varying betas
   idx_a_tv <- matrix(FALSE, nrow = k_alp, ncol = 1)            # construct index for time-varying alphas
@@ -138,7 +138,7 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
     count <- 0
     U <- matrix(0, nrow = t_max, ncol = K)
     for (ii in 1:K){
-      ki <- K*p+1+ii-1
+      ki <- K*p+1+ii-1 # Number of theta in equation ii
 
       if (ii > 1) {
         X <- cbind(X2, -shortY[,1:(ii-1)])
@@ -164,16 +164,28 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
         }
 
         Sigthetai <- c( Sigbeta[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], Sigalp[count_seq])
-
         thetai0 <- c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
-        XiSig <- Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-h[,ii]))
+
+        # XiSig <- Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-h[,ii]))
+        # TiST_thetai <- Matrix::t(Tthetai) %*% Matrix::sparseMatrix(i = 1:(t_max*ki), j = 1:(t_max*ki), x = rep(1./Sigthetai,t_max)) %*% Tthetai
+        # Kthetai <- TiST_thetai + XiSig %*% bigXi
+        #
+        # thetai_hat <- Matrix::solve(Kthetai, TiST_thetai %*% Matrix(data = thetai0, nrow = t_max*length(thetai0), ncol = 1) + XiSig %*% shortY[,ii]  )
+        # thetai <- thetai_hat + Matrix::solve(Matrix::chol(Kthetai), Matrix(rnorm(t_max*ki), ncol = 1) )
+
+        x.tilde = Matrix::t(Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-0.5*h[,ii])))
         TiST_thetai <- Matrix::t(Tthetai) %*% Matrix::sparseMatrix(i = 1:(t_max*ki), j = 1:(t_max*ki), x = rep(1./Sigthetai,t_max)) %*% Tthetai
-        Kthetai <- TiST_thetai + XiSig %*% bigXi
-        #thetai_hat <- solve(Kthetai, TiST_thetai %*% kronecker(matrix(1, nrow = t_max, ncol = 1),thetai0) + XiSig %*% shortY[,ii]  )
-        # t(T) S_inv T * mu_i = t(T) S_inv alpha_tilde
-        thetai_hat <- Matrix::solve(Kthetai, TiST_thetai %*% Matrix(data = thetai0, nrow = t_max*length(thetai0), ncol = 1) + XiSig %*% shortY[,ii]  )
-        thetai <- thetai_hat + Matrix::solve(Matrix::chol(Kthetai), Matrix(rnorm(t_max*ki), ncol = 1) )
+
+        y.tilde = Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-0.5*h[,ii])) %*% shortY[,ii]
+        theta.prior.precmean = TiST_thetai %*% Matrix(data = thetai0, nrow = t_max*length(thetai0), ncol = 1)
+        theta.prec.chol <- Matrix::chol( TiST_thetai + Matrix::crossprod(x.tilde) )
+        thetai <- Matrix::solve( theta.prec.chol,
+                                 Matrix::solve( Matrix::t(theta.prec.chol), theta.prior.precmean + Matrix::crossprod( x.tilde, y.tilde ))
+                             + rnorm(t_max*ki) )
+
+
         Thetai <- t(matrix(thetai, nrow = ki, ncol = t_max))
+
         beta[,((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)] <- Thetai[,1:k_beta_div_K]
         if ( (k_beta_div_K) < ncol(Thetai)){
           alp[,count_seq] <- Thetai[,(k_beta_div_K+1):ncol(Thetai)]
@@ -186,15 +198,26 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
           count_seq <- (count+1):(count+ii-1)
         }
         bigXi <- X
-        XiSig <- Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-h[,ii]))
+        # XiSig <- Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-h[,ii]))
+        # Vthetai <- c(Vbeta0[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K),], Valp0[count_seq])
+        #
+        # thetai0 <- c(abeta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], aalp0[count_seq] )
+        # Kthetai <- 1/Vthetai + XiSig %*% bigXi
+        # Kthetai <- 0.5 * ( Kthetai + Matrix::t(Kthetai))
+        # thetai_hat <- Matrix::solve(Kthetai, thetai0/Vthetai + XiSig %*% shortY[,ii])
+        # thetai <- as.vector(thetai_hat + Matrix::solve(Matrix::chol(Kthetai) , Matrix(rnorm(ki), ncol = 1) ))
+
+        x.tilde = Matrix::t(Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-0.5*h[,ii])))
         Vthetai <- c(Vbeta0[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K),], Valp0[count_seq])
-
         thetai0 <- c(abeta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], aalp0[count_seq] )
-        Kthetai <- 1/Vthetai + XiSig %*% bigXi
-        Kthetai <- 0.5 * ( Kthetai + Matrix::t(Kthetai))
-        thetai_hat <- Matrix::solve(Kthetai, thetai0/Vthetai + XiSig %*% shortY[,ii])
-        thetai <- as.vector(thetai_hat + Matrix::solve(Matrix::chol(Kthetai) , Matrix(rnorm(ki), ncol = 1) ))
 
+        y.tilde = Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-0.5*h[,ii])) %*% shortY[,ii]
+        theta.prior.precmean = thetai0/Vthetai
+        theta.prec.chol <- Matrix::chol( diag(1/Vthetai) + Matrix::crossprod(x.tilde) )
+        thetai <- backsolve( theta.prec.chol,
+                               backsolve( theta.prec.chol, theta.prior.precmean + Matrix::crossprod( x.tilde, y.tilde ),
+                                          upper.tri = T, transpose = T )
+                               + rnorm(ki) )
 
         betai <- thetai[1:k_beta_div_K];
         beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)] <- betai
@@ -245,7 +268,6 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
     if (sum(idx_b_tv) > 0){
       Sigbeta[idx_b_tv] <- Sigma_sample(Beta = beta[,idx_b_tv, drop = FALSE],
                                       Beta0 = as.numeric(beta0[idx_b_tv]),
-                                      Sigma_Beta = Sigbeta[idx_b_tv],
                                       Prior_Beta = Sbeta0[idx_b_tv],
                                       t_max = t_max)
     }
@@ -255,7 +277,6 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
     if (sum(idx_a_tv) > 0){
       Sigalp[idx_a_tv] <- Sigma_sample(Beta = alp[,idx_a_tv, drop = FALSE],
                                      Beta0 = as.numeric(alp0[idx_a_tv]),
-                                     Sigma_Beta = Sigalp[idx_a_tv],
                                      Prior_Beta = Salp0[idx_a_tv],
                                      t_max = t_max)
 
@@ -265,7 +286,6 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
     # Sigh <- 1/ mapply(FUN = rgamma, n = 1, shape = nuh0+t_max/2, rate = Sh0 + colSums(E_h^2)/2)
     Sigh <- Sigma_sample(Beta = h,
                          Beta0 = as.numeric(h0),
-                         Sigma_Beta = Sigh,
                          Prior_Beta = Sh0,
                          t_max = t_max)
 
@@ -296,6 +316,8 @@ GaussTVPSV <- function(y, y0, p, priors, inits){
                  store_Sigbeta = store_Sigbeta, store_Sigalp = store_Sigalp, store_Sigh = store_Sigh,
                  store_beta0 = store_beta0, store_alp0 = store_alp0, store_h0 = store_h0,
                  data = list(y = y, y0 = y0, p = p, priors = priors, inits = inits, dist = "Gaussian"),
-                 class = "GaussTVPSV")
+                 esttime = end_time - start_time,
+                 class = "TVPGaussSV")
   return(output)
 }
+
