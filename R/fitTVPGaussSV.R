@@ -23,35 +23,19 @@ fitTVPGaussSV <- function(y, y0, p, priors, inits){
   n_tv <- sum(is_tv)# # of time-varying equations
 
   ## prior
-  abeta0 <- matrix(0, nrow = k_beta, ncol = 1);
-  Vbeta0 <- 10*matrix(1, nrow = k_beta, ncol = 1);
-  aalp0 <- matrix(0, nrow = k_alp, ncol = 1);
-  Valp0 <- 10*matrix(1, nrow = k_alp, ncol = 1);
+  abeta0 <- priors$b0
+  Vbeta0 <- matrix(priors$V_b_prior)
+  aalp0 <- priors$a0
+  Valp0 <- priors$V_a0_prior
 
-  EstMdl1 <- arima(y[,1] ,order = c(p,0,0))
-  EstMdl2 <- arima(y[,2] ,order = c(p,0,0))
-  EstMdl3 <- arima(y[,3] ,order = c(p,0,0))
-
-  ah0 <- c(log(EstMdl1$sigma2), log(EstMdl2$sigma2), log(EstMdl3$sigma2))
+  ah0 <- c(log(priors$sigma^2))
   Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
-  # EstMdl1 <- var(y[,1])
-  # EstMdl2 <- var(y[,2])
-  # EstMdl3 <- var(y[,3])
-  #
-  # ah0 <- c(log(EstMdl1), log(EstMdl2), log(EstMdl3))
-  # Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
 
+  # Variance of the tvp
   hyper_ab <- priors$hyper_ab
   hyper_h <- priors$hyper_h
-
-  # nuh0 <- 5*matrix(1, nrow = K, ncol = 1);
-  # Sh0 <- hyper_h^2*matrix(1, nrow = K, ncol = 1)*(nuh0-1)
-  Sh0 <- hyper_h*matrix(1, nrow = K, ncol = 1)
-
-  # nubeta0 <- 5*matrix(1, nrow = k_beta, ncol = 1);
-  # Sbeta0 <- hyper_ab^2*matrix(1, nrow = k_beta, ncol = 1)*(nubeta0-1)
   Sbeta0 <- hyper_ab*matrix(1, nrow = k_beta, ncol = 1)
-  Sbeta0[seq(1,k_beta, by =  K*p+1)] <- 10*hyper_ab # intercepts more diffused prior 10*hyper_ab
+  Sbeta0[seq(1,k_beta, by =  K*p+1)] <- hyper_ab # intercepts more diffused prior 10*hyper_ab
   Sbeta0 <- Sbeta0*kronecker(is_tv, matrix(1, nrow = K*p+1, ncol = 1) )# set to 0 for time-invariant equations
 
   Salp0 <- hyper_ab*matrix(1, nrow = k_alp, ncol = 1)
@@ -62,6 +46,7 @@ fitTVPGaussSV <- function(y, y0, p, priors, inits){
     }
     count <- count + ii - 1
   }
+  Sh0 <- hyper_h*matrix(1, nrow = K, ncol = 1)
 
 
   ## compute and define a few things
@@ -71,12 +56,6 @@ fitTVPGaussSV <- function(y, y0, p, priors, inits){
     X2[,((ii-1)*K+1):(ii*K)] <- tmpY[(p-ii+1):(t_max+p-ii),]
   }
   X2 <- cbind(rep(1, t_max), X2)
-  # X1 <- matrix(0, K*t_max,k_alp)
-  # count <- 0
-  # for (ii in 2:K){
-  #   X1[seq(ii,K*t_max,by = K),(count+1):(count+ii-1)] <- - shortY[,1:ii-1]
-  #   count <- count + ii-1
-  # }
 
   idx_b_tv <- (kronecker(is_tv,matrix(1,nrow = K*p+1,ncol = 1))==1)   # index for time-varying betas
   idx_a_tv <- matrix(FALSE, nrow = k_alp, ncol = 1)            # construct index for time-varying alphas
