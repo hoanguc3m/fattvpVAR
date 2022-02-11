@@ -20,11 +20,16 @@ get_forecast <- function(Chain, y0 = NULL, t_pred = 24, Nfsample = NULL){
   ndraws <- nrow(Chain$store_h0)
 
   if (is.null(Nfsample) || (Nfsample == ndraws) ){
-    Nfsample <- nrow(mcmc)
-    frange <- c(1:Nfsample)
-  } else {
-    frange <- sample(1:ndraws, Nfsample, replace = T)
+    Nfsample <- ndraws
   }
+
+  store_beta <- get_last_post(Chain, element = "beta")
+  store_alpha <- get_last_post(Chain, element = "alpha")
+  stab_id <- check_stability(store_beta, store_alpha, p, K)
+
+
+  frange <- sample( (1:ndraws)[stab_id], Nfsample, replace = T)
+
 
   if (is.null(y0)){
     y0 <- as.matrix(tail(Chain$data$y,p))
@@ -43,12 +48,7 @@ get_forecast <- function(Chain, y0 = NULL, t_pred = 24, Nfsample = NULL){
   store_h0 <- Chain$store_h0
   store_Sigh <- sqrt(Chain$store_Sigh) # get sd
 
-  store_alp <- Chain$store_alp
-  store_alp0 <- Chain$store_alp0
   store_Sigalp <- sqrt(Chain$store_Sigalp) # get sd
-
-  store_beta <- Chain$store_beta
-  store_beta0 <- Chain$store_beta0
   store_Sigbeta <- sqrt(Chain$store_Sigbeta) # get sd
 
   store_nu <- Chain$store_nu
@@ -58,15 +58,12 @@ get_forecast <- function(Chain, y0 = NULL, t_pred = 24, Nfsample = NULL){
     count_id <- count_id+1
 
     h <- tail(store_h[i,,],1)
-    #h0 <- store_h0[i,]
     Sigh <- store_Sigh[i,]
 
-    alp <- tail(store_alp[i,,],1)
-    #alp0 <- store_alp0[i,]
+    alp <- store_alpha[i,]
     Sigalp <- store_Sigalp[i,]
 
-    beta <- tail(store_beta[i,,],1)
-    #beta0 <- store_beta0[i,]
+    beta <- store_beta[i,]
     Sigbeta <- store_Sigbeta[i,]
 
     if (dist == "Gaussian") {
@@ -192,15 +189,22 @@ forecast_density <- function(Chain, y_current = NULL, y_obs_future, time_current
   # }
 
   CRPS <- matrix(NA, nrow = t_pred, ncol = K)
-  SCRPS <- matrix(NA, nrow = t_pred, ncol = K)
-
+  qwCRPS_2t <- matrix(NA, nrow = t_pred, ncol = K) # Quantile weighted CRPS - 2 tails
+  qwCRPS_rt <- matrix(NA, nrow = t_pred, ncol = K) # Quantile weighted CRPS - right tail
+  qwCRPS_lt <- matrix(NA, nrow = t_pred, ncol = K) # Quantile weighted CRPS - left tail
+  alpha <- seq(0.05, 0.95, by = 0.05)
   for (i in c(1:K)){
     for (j in c(1:t_pred)){
       y_obs <- as.numeric(y_obs_future[j,i])
       samples1 <- predictive_samples$y_pred[j,i,]
       samples2 <- sample(samples1, size = length(samples1), replace = T)
       CRPS[j,i] <- - mean(abs(samples1 - y_obs)) + 0.5*mean(abs(samples1 - samples2))
-      SCRPS[j,i] <- - mean(abs(samples1 - y_obs)) / mean(abs(samples1 - samples2)) - 0.5*log(mean(abs(samples1 - samples2)))
+      Q_tau <- quantile(predictive_samples$y_pred[j,i,], probs = alpha)
+      QS <- (y_obs - Q_tau) * ( (y_obs < Q_tau) - alpha )
+      qwCRPS_2t[j,i] <- 2/length(alpha) * sum(  (2 * alpha - 1)^2 * QS )
+      qwCRPS_rt[j,i] <- 2/length(alpha) * sum(  alpha^2 * QS )
+      qwCRPS_lt[j,i] <- 2/length(alpha) * sum(  (1 - alpha)^2 * QS )
+
     }
   }
 
@@ -222,7 +226,9 @@ forecast_density <- function(Chain, y_current = NULL, y_obs_future, time_current
               cMSFE = (apply(cy_pred, MARGIN = c(1,2), FUN = mean) - cy_obs_future)^2,
               cMAFE = abs(apply(cy_pred, MARGIN = c(1,2), FUN = mean) - cy_obs_future),
               CRPS = CRPS,
-              SCRPS = SCRPS
+              qwCRPS_2t = qwCRPS_2t,
+              qwCRPS_rt = qwCRPS_rt,
+              qwCRPS_lt = qwCRPS_lt
   ))
 }
 
@@ -237,7 +243,7 @@ recursive_seperate <- function(y_raw, is_tv, t_start = 100, t_pred = 24, K = nco
   time_current <- t_start # index of the longer y
   y_current <- as.matrix(y_raw[c((p+1):time_current), ], ncol = K)
   y0 <- as.matrix(y_raw[c(1:p), ], ncol = K)
-  priors <- list(hyper_ab = 1, hyper_h = 1)
+  priors <- get_prior_minnesota(y = y_current, p = p, intercept=TRUE)
   inits <- list(samples = 50000, burnin = 20000, thin = 5)
   inits$is_tv <- is_tv
 

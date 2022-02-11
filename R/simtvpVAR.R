@@ -99,8 +99,13 @@ sim.tvpVAR.Gaussian.SV <- function(K = 3, p = 2, t_max = 1000,
   V_b <- V_ab[1:k_beta]
   V_a <- V_ab[(k_beta+1):(k_beta+k_alp)]
 
-  B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(V_b, t_max) * reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta), nrow = t_max), MARGIN = 2, FUN = cumsum)
-  A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(V_a, t_max) *  apply(matrix(rnorm(t_max * k_alp) , nrow = t_max), MARGIN = 2, FUN = cumsum)
+  instabi_indicator = TRUE
+  while (instabi_indicator) {
+    B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(V_b, t_max) * reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta), nrow = t_max), MARGIN = 2, FUN = cumsum)
+    A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(V_a, t_max) *  apply(matrix(rnorm(t_max * k_alp) , nrow = t_max), MARGIN = 2, FUN = cumsum)
+    stab_id <- check_stability(B_t, A_t, p, K)
+    instabi_indicator <- (sum(stab_id) < t_max)
+  }
   H_t <- reprow( as.numeric(h), t_max) + apply(matrix(rnorm(t_max * K), nrow = t_max) * reprow(Vh, t_max), MARGIN = 2, FUN = cumsum)
 
   ystar <- tail(y0, p)
@@ -203,8 +208,14 @@ sim.tvpVAR.Student.SV <- function(K = 3, p = 2, t_max = 1000,
   V_b <- V_ab[1:k_beta]
   V_a <- V_ab[(k_beta+1):(k_beta+k_alp)]
 
-  B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(V_b, t_max) * reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta), nrow = t_max), MARGIN = 2, FUN = cumsum)
-  A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(V_a, t_max) *  apply(matrix(rnorm(t_max * k_alp) , nrow = t_max), MARGIN = 2, FUN = cumsum)
+  instabi_indicator = TRUE
+  while (instabi_indicator) {
+    B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(V_b, t_max) * reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta), nrow = t_max), MARGIN = 2, FUN = cumsum)
+    A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(V_a, t_max) *  apply(matrix(rnorm(t_max * k_alp) , nrow = t_max), MARGIN = 2, FUN = cumsum)
+    stab_id <- check_stability(B_t, A_t, p, K)
+    instabi_indicator <- (sum(stab_id) < t_max)
+  }
+
   H_t <- reprow( as.numeric(h), t_max) + apply(matrix(rnorm(t_max * K), nrow = t_max) * reprow(Vh, t_max), MARGIN = 2, FUN = cumsum)
 
   ystar <- tail(y0, p)
@@ -321,8 +332,14 @@ sim.tvpVAR.Gaussian.nonSV <- function(K = 3, p = 2, t_max = 1000,
   }
 
 
-  B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta) * V_ab, nrow = t_max), MARGIN = 2, FUN = cumsum)
-  A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(idx_a_tv, t_max) * apply(matrix(rnorm(t_max * k_alp) * V_ab, nrow = t_max), MARGIN = 2, FUN = cumsum)
+  instabi_indicator = TRUE
+  while (instabi_indicator) {
+    B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(V_b, t_max) * reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta), nrow = t_max), MARGIN = 2, FUN = cumsum)
+    A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(V_a, t_max) *  apply(matrix(rnorm(t_max * k_alp) , nrow = t_max), MARGIN = 2, FUN = cumsum)
+    stab_id <- check_stability(B_t, A_t, p, K)
+    instabi_indicator <- (sum(stab_id) < t_max)
+  }
+
   H_t <- reprow( as.numeric(h), t_max)
 
   ystar <- tail(y0, p)
@@ -404,8 +421,13 @@ sim.tvpVAR.Student.nonSV <- function(K = 3, p = 2, t_max = 1000,
   }
 
 
-  B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta) * V_ab, nrow = t_max), MARGIN = 2, FUN = cumsum)
-  A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(idx_a_tv, t_max) * apply(matrix(rnorm(t_max * k_alp) * V_ab, nrow = t_max), MARGIN = 2, FUN = cumsum)
+  instabi_indicator = TRUE
+  while (instabi_indicator) {
+    B_t <- reprow( as.numeric(t(B0)), t_max) + reprow(V_b, t_max) * reprow(idx_b_tv, t_max) * apply(matrix(rnorm(t_max * k_beta), nrow = t_max), MARGIN = 2, FUN = cumsum)
+    A_t <- reprow( as.numeric(t(a0_vec)), t_max) + reprow(V_a, t_max) *  apply(matrix(rnorm(t_max * k_alp) , nrow = t_max), MARGIN = 2, FUN = cumsum)
+    stab_id <- check_stability(B_t, A_t, p, K)
+    instabi_indicator <- (sum(stab_id) < t_max)
+  }
   H_t <- reprow( as.numeric(h), t_max)
 
   ystar <- tail(y0, p)

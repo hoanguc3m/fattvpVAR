@@ -1,11 +1,11 @@
 #' @export
 fitTVPGaussSV <- function(y, y0, p, priors, inits){
 
-  Y0 <- y0
-  shortY <- y
+  Y0 <- y0      # p x K matrix
+  shortY <- y   # T x K matrix
   t_max <- nrow(shortY)
   K <- ncol(shortY)
-  Y <- matrixcalc::vec(t(shortY))
+  Y <- matrixcalc::vec(t(shortY)) # Y stack by obs and time
 
 
   samples <- inits$samples
@@ -24,7 +24,7 @@ fitTVPGaussSV <- function(y, y0, p, priors, inits){
 
   ## prior
   abeta0 <- priors$b0
-  Vbeta0 <- matrix(priors$V_b_prior)
+  Vbeta0 <- priors$V_b_prior
   aalp0 <- priors$a0
   Valp0 <- priors$V_a0_prior
 
@@ -39,14 +39,21 @@ fitTVPGaussSV <- function(y, y0, p, priors, inits){
   Sbeta0 <- Sbeta0*kronecker(is_tv, matrix(1, nrow = K*p+1, ncol = 1) )# set to 0 for time-invariant equations
 
   Salp0 <- hyper_ab*matrix(1, nrow = k_alp, ncol = 1)
-  count <- 0
+
+  k_a_eq <- seq(0, K-1)
+  id_a <- cbind(cumsum(k_a_eq) - k_a_eq + 1,cumsum(k_a_eq))
+  count_seqa <- list(); count_seqb <- list()
+  count_seqa[[1]] <- 0; count_seqb[[1]] <- seq(1, k_beta_div_K)
   for (ii in c(2:K)){
+    count_seqa[[ii]] <- seq(id_a[ii,1], id_a[ii,2])
+    count_seqb[[ii]] <- ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)
+
     if (is_tv[ii] == 0){
-      Salp0[(count+1):(count+ii-1)] <- 0 # set to 0 for time-invariant equations
+      Salp0[count_seqa[[ii]]] <- 0 # set to 0 for time-invariant equations
     }
-    count <- count + ii - 1
   }
-  Sh0 <- hyper_h*matrix(1, nrow = K, ncol = 1)
+
+  #Sh0 <- hyper_h*matrix(1, nrow = K, ncol = 1)
 
 
   ## compute and define a few things
@@ -59,26 +66,11 @@ fitTVPGaussSV <- function(y, y0, p, priors, inits){
 
   idx_b_tv <- (kronecker(is_tv,matrix(1,nrow = K*p+1,ncol = 1))==1)   # index for time-varying betas
   idx_a_tv <- matrix(FALSE, nrow = k_alp, ncol = 1)            # construct index for time-varying alphas
-  count <- 0
-  for (j in 2:K){
-    if (is_tv[j] == 1){
-      idx_a_tv[ (count+1):(count+j-1)] <- TRUE
+  for (ii in 2:K){
+    if (is_tv[ii] == 1){
+      idx_a_tv[ count_seqa[[ii]]] <- TRUE
     }
-    count <- count + j-1
   }
-
-  # cpri <- -.5*(K+k_beta+k_alp)*log(2*pi) -.5*sum(log(Vbeta0)) -.5*sum(log(Vh0)) +
-  #         sum(nubeta0[idx_b_tv]*log(Sbeta0[idx_b_tv])) - sum(lgamma(nubeta0[idx_b_tv])) +
-  #         sum(nualp0[idx_a_tv]*log(Salp0[idx_a_tv])) - sum(lgamma(nualp0[idx_a_tv])) +
-  #         sum(nuh0*log(Sh0)) - sum(lgamma(nuh0))
-  # priorcalc <- function(sb,sa,sh,b0,a0,c0){
-  #   return( cpri -.5*t(b0-abeta0) %*% ((b0-abeta0)/Vbeta0) -
-  #           .5*t(a0-aalp0) %*% ((a0-aalp0)/Valp0) -.5*t((c0-ah0)/Vh0) %*% (c0-ah0) -
-  #           t(nubeta0[idx_b_tv]+1) %*% log(sb[idx_b_tv]) -sum(Sbeta0[idx_b_tv]/sb[idx_b_tv]) -
-  #           t(nualp0[idx_a_tv]+1) %*% log(sa[idx_a_tv]) -sum(Salp0[idx_a_tv]/sa[idx_a_tv]) -
-  #           t(nuh0+1) %*% log(sh) - sum(Sh0/sh)
-  #   )
-  # }
 
   ## initialize for storage
   store_alp <- array(0, dim = c(samplesDiv,t_max,k_alp))
@@ -113,9 +105,12 @@ fitTVPGaussSV <- function(y, y0, p, priors, inits){
   start_time <- Sys.time()
 
   for (isim in c(1:(samples + burnin))){
-    # sample alp and beta - equation by equation
-    count <- 0
-    U <- matrix(0, nrow = t_max, ncol = K)
+
+    # sample alp0 and beta0 - equation by equation
+    U1 <- shortY # U = Y - Z * tilde(theta)
+    U2 <- matrix(0, nrow = t_max, ncol = K) # U = Y - X * theta
+    U <- matrix(0, nrow = t_max, ncol = K) # U = Y - X * theta - Z * tilde(theta)
+
     for (ii in 1:K){
       ki <- K*p+1+ii-1 # Number of theta in equation ii
 
@@ -124,10 +119,76 @@ fitTVPGaussSV <- function(y, y0, p, priors, inits){
       } else {
         X <- X2
       }
-
       if (is_tv[ii] == 1){
+        thetai <- cbind(beta[, count_seqb[[ii]] ], alp[,count_seqa[[ii]] ])
 
-        bigXi <- SURform(X) # "dgCMatrix"
+        invvol <- as.vector(exp(-h[,ii]/2))
+        y.tilde <- as.vector( U1[,ii] ) * invvol
+        x.tilde <- cbind(X, X*thetai) * invvol
+
+        V_b_prior_inv <- diag(1/c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ],
+                                  Sbeta0[ count_seqb[[ii]] ], Salp0[count_seqa[[ii]] ] ))
+        theta.prior.precmean <- c(abeta0[count_seqb[[ii]] ], aalp0[count_seqa[[ii]] ], rep(0,ki) ) /
+                                c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ],
+                                  Sbeta0[ count_seqb[[ii]] ], Salp0[count_seqa[[ii]] ] )
+
+        theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
+        thetai0 <- backsolve( theta.prec.chol,
+                              backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
+                                         upper.tri = T, transpose = T )
+                              + rnorm(ki) )
+        ab_sample <- thetai0[1:ki]
+        Sab_sample <- thetai0[(ki+1):(2*ki)]
+        beta0[count_seqb[[ii]] ] <- ab_sample[1:k_beta_div_K]
+        Sigbeta[count_seqb[[ii]] ] <- Sab_sample[1:k_beta_div_K]^2
+        if ( ii > 1){
+          alp0[count_seqa[[ii]] ] <- ab_sample[(k_beta_div_K+1):ki]
+          Sigalp[count_seqa[[ii]] ] <- Sab_sample[(k_beta_div_K+1):ki]^2
+        }
+        U2[,ii] <- shortY[,ii] - X %*% ab_sample
+
+      } else {
+
+        invvol <- as.vector(exp(-h[,ii]/2))
+        y.tilde <- as.vector( U1[,ii] ) * invvol
+        x.tilde <- X * invvol
+
+        V_b_prior_inv <- diag(1/c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ]))
+        theta.prior.precmean <- c(abeta0[count_seqb[[ii]] ], aalp0[count_seqa[[ii]] ] ) /
+          c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ])
+
+        theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
+        thetai0 <- backsolve( theta.prec.chol,
+                              backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
+                                         upper.tri = T, transpose = T )
+                              + rnorm(ki) )
+        beta0[count_seqb[[ii]] ] <- thetai0[1:k_beta_div_K];
+        if ( ii > 1){
+          alp0[count_seqa[[ii]] ] <- thetai0[(k_beta_div_K+1):ki]
+        }
+        U2[,ii] <- shortY[,ii] - X %*% thetai0
+
+
+      }
+
+
+    }
+    # matrix(beta0, nrow = K, byrow = T); alp0
+
+    # sample alp and beta - equation by equation
+    U <- U2
+    for (ii in 1:K){
+      if (is_tv[ii] == 1){
+        ki <- K*p+1+ii-1 # Number of theta in equation ii
+        if (ii > 1) {
+          X <- cbind(X2, -shortY[,1:(ii-1)])
+        } else {
+          X <- X2
+        }
+
+        Sigthetai <- c( Sigbeta[count_seqb[[ii]] ], Sigalp[count_seqa[[ii]] ])
+        bigXi <- SURform(X * reprow(sqrt(Sigthetai), t_max) ) # "dgCMatrix"
+
         # % S = sparse(i,j,s,m,n,nzmax) uses vectors i, j, and s to generate an
         # %   m-by-n sparse matrix such that S(i(k),j(k)) = s(k), with space
         # %   allocated for nzmax nonzeros.
@@ -136,137 +197,54 @@ fitTVPGaussSV <- function(y, y0, p, priors, inits){
                                                                       j = 1:((t_max-1)*ki),
                                                                       x = rep(1, (t_max-1)*ki),
                                                                       dims = c(t_max*ki,t_max*ki))
-        if (ii == 1){
-          count_seq <- 0
-        } else {
-          count_seq <- (count+1):(count+ii-1)
-        }
 
-        Sigthetai <- c( Sigbeta[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], Sigalp[count_seq])
-        thetai0 <- c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
-
-        # XiSig <- Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-h[,ii]))
-        # TiST_thetai <- Matrix::t(Tthetai) %*% Matrix::sparseMatrix(i = 1:(t_max*ki), j = 1:(t_max*ki), x = rep(1./Sigthetai,t_max)) %*% Tthetai
-        # Kthetai <- TiST_thetai + XiSig %*% bigXi
-        #
-        # thetai_hat <- Matrix::solve(Kthetai, TiST_thetai %*% Matrix(data = thetai0, nrow = t_max*length(thetai0), ncol = 1) + XiSig %*% shortY[,ii]  )
-        # thetai <- thetai_hat + Matrix::solve(Matrix::chol(Kthetai), Matrix(rnorm(t_max*ki), ncol = 1) )
+        thetai0 <- rep(0,ki)
 
         x.tilde = Matrix::t(Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-0.5*h[,ii])))
-        TiST_thetai <- Matrix::t(Tthetai) %*% Matrix::sparseMatrix(i = 1:(t_max*ki), j = 1:(t_max*ki), x = rep(1./Sigthetai,t_max)) %*% Tthetai
+        TiST_thetai <- Matrix::t(Tthetai) %*% Tthetai
 
-        y.tilde = Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-0.5*h[,ii])) %*% shortY[,ii]
-        theta.prior.precmean = TiST_thetai %*% Matrix(data = thetai0, nrow = t_max*length(thetai0), ncol = 1)
+        y.tilde = Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-0.5*h[,ii])) %*% U2[,ii]
+        #theta.prior.precmean = Matrix(data = 0, nrow = t_max*length(thetai0), ncol = 1)
         theta.prec.chol <- Matrix::chol( TiST_thetai + Matrix::crossprod(x.tilde) )
         thetai <- Matrix::solve( theta.prec.chol,
-                                 Matrix::solve( Matrix::t(theta.prec.chol), theta.prior.precmean + Matrix::crossprod( x.tilde, y.tilde ))
+                                 Matrix::solve( Matrix::t(theta.prec.chol), Matrix::crossprod( x.tilde, y.tilde ))
                              + rnorm(t_max*ki) )
 
 
         Thetai <- t(matrix(thetai, nrow = ki, ncol = t_max))
 
-        beta[,((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)] <- Thetai[,1:k_beta_div_K]
-        if ( (k_beta_div_K) < ncol(Thetai)){
-          alp[,count_seq] <- Thetai[,(k_beta_div_K+1):ncol(Thetai)]
+        beta[,count_seqb[[ii]] ] <- Thetai[,1:k_beta_div_K]
+        if ( ii > 1){
+          alp[,count_seqa[[ii]] ] <- Thetai[,(k_beta_div_K+1):ki]
         }
-
-      } else {
-        if (ii == 1){
-          count_seq <- 0
-        } else {
-          count_seq <- (count+1):(count+ii-1)
-        }
-        bigXi <- X
-        # XiSig <- Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-h[,ii]))
-        # Vthetai <- c(Vbeta0[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K),], Valp0[count_seq])
-        #
-        # thetai0 <- c(abeta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], aalp0[count_seq] )
-        # Kthetai <- 1/Vthetai + XiSig %*% bigXi
-        # Kthetai <- 0.5 * ( Kthetai + Matrix::t(Kthetai))
-        # thetai_hat <- Matrix::solve(Kthetai, thetai0/Vthetai + XiSig %*% shortY[,ii])
-        # thetai <- as.vector(thetai_hat + Matrix::solve(Matrix::chol(Kthetai) , Matrix(rnorm(ki), ncol = 1) ))
-
-        x.tilde = Matrix::t(Matrix::t(bigXi) %*% Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-0.5*h[,ii])))
-        Vthetai <- c(Vbeta0[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K),], Valp0[count_seq])
-        thetai0 <- c(abeta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], aalp0[count_seq] )
-
-        y.tilde = Matrix::sparseMatrix(i = 1:t_max, j = 1:t_max, x = exp(-0.5*h[,ii])) %*% shortY[,ii]
-        theta.prior.precmean = thetai0/Vthetai
-        theta.prec.chol <- Matrix::chol( diag(1/Vthetai) + Matrix::crossprod(x.tilde) )
-        thetai <- backsolve( theta.prec.chol,
-                               backsolve( theta.prec.chol, theta.prior.precmean + Matrix::crossprod( x.tilde, y.tilde ),
-                                          upper.tri = T, transpose = T )
-                               + rnorm(ki) )
-
-        betai <- thetai[1:k_beta_div_K];
-        beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)] <- betai
-        beta[,((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)] <- reprow(betai,t_max)
-        if ( length(thetai) >= k_beta_div_K+1){
-          alpi <- thetai[(k_beta_div_K+1):length(thetai)]
-          alp0[count_seq] <- alpi
-          alp[,count_seq] <- reprow(alpi,t_max)
-        }
-
-
+        U[,ii] <- as.matrix(U[,ii] - bigXi %*% thetai)
       }
-      count <- count + ii-1
-      U[,ii] <- as.matrix(shortY[,ii] - bigXi %*% thetai)
     }
 
+    aux <- sample_h_ele(ytilde = t(U), sigma_h = Sigh, h0_mean = ah0, h = t(h), K = K, t_max = t_max, prior = priors)
+    h <- t(aux$Sigtdraw)
+    h0 <- as.numeric(aux$h0)
+    Sigh <- diag(aux$sigma_h)
 
-    # sample h
-    for (ii in c(1:K)){
-      Ystar <- log(U[,ii]^2 + .0001)
-      h[,ii] <- SVRW(Ystar = Ystar, h = h[,ii], sig = Sigh[ii], h0 = h0[ii])
-    }
+    # # sample h
+    # for (ii in c(1:K)){
+    #   Ystar <- log(U[,ii]^2 + .0001)
+    #   h[,ii] <- SVRW(Ystar = Ystar, h = h[,ii], sig = Sigh[ii], h0 = h0[ii])
+    # }
+    #
+    # # sample h0
+    # Kh0 <- Matrix::sparseMatrix(i = 1:K, j = 1:K, x = as.numeric(1/Sigh + 1/Vh0))
+    # h0_hat <- Matrix::solve(Kh0, (ah0/Vh0 + h[1,]/Sigh))
+    # h0 <- as.matrix(h0_hat + Matrix::solve(Matrix::chol(Kh0), rnorm(K)))
+    #
+    # # sample Sigh
+    # # E_h <- h - rbind(t(h0), h[1:(t_max-1),])
+    # # Sigh <- 1/ mapply(FUN = rgamma, n = 1, shape = nuh0+t_max/2, rate = Sh0 + colSums(E_h^2)/2)
+    # Sigh <- Sigma_sample(Beta = h,
+    #                      Beta0 = as.numeric(h0),
+    #                      Prior_Beta = Sh0,
+    #                      t_max = t_max)
 
-    # sample beta0
-    if (sum(idx_b_tv) > 0){
-      Kbeta0_tv <- Matrix::sparseMatrix(i = 1:(k_beta_div_K*n_tv),j = 1:(k_beta_div_K*n_tv),
-                                        x = 1/Sigbeta[idx_b_tv] + 1/Vbeta0[idx_b_tv])
-
-      beta0_tv_hat <- Matrix::solve(Kbeta0_tv, (abeta0[idx_b_tv]/Vbeta0[idx_b_tv] + beta[1,idx_b_tv]/Sigbeta[idx_b_tv]) )
-      beta0[idx_b_tv] <- as.vector(beta0_tv_hat + Matrix::solve( Matrix::chol(Kbeta0_tv), rnorm(k_beta_div_K*n_tv) ))
-    }
-
-    # sample alp0
-    if (sum(idx_a_tv) > 0){
-      Kalp0_tv <- Matrix::sparseMatrix(i = 1:sum(idx_a_tv), j = 1:sum(idx_a_tv),
-                               x = 1/Sigalp[idx_a_tv] + 1/Valp0[idx_a_tv])
-      alp0_tv_hat <- Matrix::solve(Kalp0_tv, (aalp0[idx_a_tv] / Valp0[idx_a_tv] + alp[1,idx_a_tv]/Sigalp[idx_a_tv]))
-      alp0[idx_a_tv] <- as.vector(alp0_tv_hat + Matrix::solve( Matrix::chol(Kalp0_tv) , rnorm(sum(idx_a_tv))))
-    }
-    # sample h0
-    Kh0 <- Matrix::sparseMatrix(i = 1:K, j = 1:K, x = as.numeric(1/Sigh + 1/Vh0))
-    h0_hat <- Matrix::solve(Kh0, (ah0/Vh0 + h[1,]/Sigh))
-    h0 <- as.matrix(h0_hat + Matrix::solve(Matrix::chol(Kh0), rnorm(K)))
-
-    # sample Sigbeta - InvGamma conjugate prior
-    # E_beta <- beta[,idx_b_tv] - rbind(beta0[idx_b_tv], beta[1:(t_max-1),idx_b_tv])
-    # Sigbeta[idx_b_tv] <- 1/ mapply(FUN = rgamma, n = 1, shape = t_max/2, rate = Sbeta0[idx_b_tv] + colSums(E_beta^2)/2)
-    if (sum(idx_b_tv) > 0){
-      Sigbeta[idx_b_tv] <- Sigma_sample(Beta = beta[,idx_b_tv, drop = FALSE],
-                                      Beta0 = as.numeric(beta0[idx_b_tv]),
-                                      Prior_Beta = Sbeta0[idx_b_tv],
-                                      t_max = t_max)
-    }
-    # sample Sigalp - InvGamma conjugate prior
-    # E_alp <- alp[,idx_a_tv] - rbind(alp0[idx_a_tv], alp[1:(t_max-1),idx_a_tv])
-    # Sigalp[idx_a_tv] <- 1/ mapply(FUN = rgamma, n = 1, shape = nualp0[idx_a_tv]+t_max/2, rate = Salp0[idx_a_tv] + colSums(E_alp^2)/2)
-    if (sum(idx_a_tv) > 0){
-      Sigalp[idx_a_tv] <- Sigma_sample(Beta = alp[,idx_a_tv, drop = FALSE],
-                                     Beta0 = as.numeric(alp0[idx_a_tv]),
-                                     Prior_Beta = Salp0[idx_a_tv],
-                                     t_max = t_max)
-
-    }
-    # sample Sigh
-    # E_h <- h - rbind(t(h0), h[1:(t_max-1),])
-    # Sigh <- 1/ mapply(FUN = rgamma, n = 1, shape = nuh0+t_max/2, rate = Sh0 + colSums(E_h^2)/2)
-    Sigh <- Sigma_sample(Beta = h,
-                         Beta0 = as.numeric(h0),
-                         Prior_Beta = Sh0,
-                         t_max = t_max)
 
     if ((isim > burnin) & (isim %% thin == 0) ) {
       isave <- (isim - burnin) %/% thin

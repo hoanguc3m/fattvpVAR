@@ -95,7 +95,65 @@ Sigma_sample <- function(Beta, Beta0, Prior_Beta, t_max){
   return(sigma_h)
 }
 
+# This function is borrowed from https://github.com/FK83/bvarsv
+#' @export
+getmix <- function(){
+  # 7 components
+  q <- c(0.00730, 0.10556, 0.00002, 0.04395, 0.34001, 0.24566, 0.25750)      # probabilities
+  m <- c(-10.12999, -3.97281, -8.56686, 2.77786, 0.61942, 1.79518, -1.08819) # means
+  u2 <- c(5.79596, 2.61369, 5.17950, 0.16735, 0.64009, 0.34023, 1.26261)    #variances
 
+  # # 10 components
+  # q <- c(0.00609, 0.04775, 0.13057, 0.20674, 0.22715, 0.18842, 0.12047, 0.05591, 0.01575, 0.00115)      # probabilities
+  # m <- c(3.13417, 2.55484, 1.94244, 1.23006, 0.35567, -0.76538, -2.26048, -4.34506, -7.47644, -13.44260)
+  # u2 <- c(0.11265, 0.17788, 0.26768, 0.40611, 0.62699, 0.98583, 1.57469, 2.54498, 4.16591, 7.33342)    #variances
+  # # m <- c(1.92677, 1.34744, 0.73504, 0.02266, -0.85173, -1.97278, -3.46788, -5.55246, -8.68384, -14.65000) # means in the Omori paper
+  return(list(q=q,m=m,u2=u2))
+}
+
+#' @export
+sample_h_ele <- function(ytilde, sigma_h = 0.0001*diag(K), h0_mean = rep(0,K),
+                         h = matrix(0, nrow = t_max, ncol = K), K, t_max, prior){
+  tmp <- getmix()
+  q <- tmp$q
+  m_mean <- tmp$m
+  u2 <- tmp$u2
+
+
+  {
+    h0 <- rep(0,K)
+    cond_var_sigma <- rep(0,K)
+    cond_mean_sigma <- rep(0,K)
+    Zs <- matrix(1,t_max,1) %x% diag(1)
+    for (i in c(1:K)){
+      sigma_prmean <- h0_mean[i] # mean h_0
+      sigma_prvar <- matrix(4)   # variance h_0
+      aux <- sigmahelper4(t(ytilde[ i,, drop =FALSE]^2), q, m_mean, u2, h[ i,, drop =FALSE], Zs, matrix(sigma_h[i]), sigma_prmean, sigma_prvar)
+      h[i,] <- aux$Sigtdraw
+      h0[i] <- as.numeric(aux$h0)
+    }
+  }
+
+  # sqrtvol <- aux$sigt
+  # [TODO] fix this
+  # sse_2 <- apply( (h[,2:t_max] - h[,1:(t_max-1)])^2, MARGIN = 1, FUN = sum)
+  if (K>1) {
+    sse_2 <- apply( (h[,1:t_max] - cbind(h0,h[,1:(t_max-1)]) )^2, MARGIN = 1, FUN = sum)
+  } else {
+    sse_2 <- sum( (h[,1:t_max] - c(h0,h[,1:(t_max-1)]) )^2)
+  }
+
+
+  sigma_h <- diag(mapply( GIGrvg::rgig, n = 1, lambda = - (t_max - 1)*0.5, chi = sse_2,
+                          psi = 1/prior$hyper_h ) , nrow = K)
+
+
+  aux <- list(sigma_h = sigma_h,
+              h0 = h0,
+              Sigtdraw = h,
+              sigt = exp(0.5*h))
+  return(aux)
+}
 
 #' @export
 Normal_approx <- function(mcmc_sample, ndraws){
@@ -168,4 +226,90 @@ int_w_MultiOrthStudent2 <- function(y, xt, A, B, sigma, nu, gamma = rep(0,K), t_
                                                          gamma = gamma[j]), logvalue = TRUE)) # input here sigma, not sigma^2
   }
   return(sum(llw))
+}
+
+#' @export
+get_post <- function(G_obj, element){
+  if (element =="beta"){
+    store_beta <- G_obj$store_beta
+    store_beta0 <- G_obj$store_beta0
+    store_Sigbeta <- G_obj$store_Sigbeta
+    for (i in c(1:dim(G_obj$store_alp)[1])){
+      store_beta[i,,] <- t(store_beta0[i,] + sqrt(store_Sigbeta[i,]) *  t(store_beta[i,,]))
+    }
+    return(store_beta)
+  }
+
+  if (element =="alpha"){
+    store_alp <- G_obj$store_alp
+    store_alp0 <- G_obj$store_alp0
+    store_Sigalp <- G_obj$store_Sigalp
+    for (i in c(1:dim(G_obj$store_alp)[1])){
+      store_alp[i,,] <- t(store_alp0[i,] + sqrt(store_Sigalp[i,]) *  t(store_alp[i,,]))
+    }
+    return(store_alp)
+  }
+
+  if (element =="h"){
+    return(G_obj$store_h)
+  }
+  if (element =="vol"){
+    return(exp(G_obj$store_h))
+  }
+}
+
+#' @export
+get_last_post <- function(G_obj, element){
+  if (element =="beta"){
+    store_beta <- G_obj$store_beta[,dim(G_obj$store_beta)[2],]
+    store_beta0 <- G_obj$store_beta0
+    store_Sigbeta <- G_obj$store_Sigbeta
+    store_beta <- store_beta0 + sqrt(store_Sigbeta) *  store_beta
+    return(store_beta)
+  }
+
+  if (element =="alpha"){
+    store_alp <- G_obj$store_alp[,dim(G_obj$store_alp)[2],]
+    store_alp0 <- G_obj$store_alp0
+    store_Sigalp <- G_obj$store_Sigalp
+    store_alp <- store_alp0 + sqrt(store_Sigalp) *  store_alp
+
+    return(store_alp)
+  }
+}
+
+
+stability <- function(b, K, p){
+  # Dimensions
+  B <- matrix(b, nrow = K, byrow = TRUE)
+  B <- B[,c(2:(K*p+1))]
+
+  if (p > 1){
+    # VAR matrices
+    Bc <- matrix(0, K*p, K*p)
+    Bc[1:K, ] <- B
+    Bc[-(1:K), 1:(K*(p-1))] <- diag(K*(p-1))
+
+  } else {
+    Bc <- B
+  }
+  ee = max(abs(eigen(Bc)$values))
+  return(ee<1)
+}
+
+
+check_stability <- function(store_beta, store_alpha, p, K){
+  ndraws <- nrow(store_beta)
+  stabi <- rep(FALSE, ndraws)
+
+  for (i in c(1:ndraws)){
+      inv_A0 <- solve(A0_mat(store_alpha[i,], K))
+      B <- inv_A0 %*% matrix(store_beta[i,], nrow = K, byrow = TRUE) #b_mat[i,]
+      Bc <- matrix(0, K*p, K*p)
+      Bc[1:K, ] <- B[,c(2:(K*p+1))]
+      Bc[-(1:K), 1:(K*(p-1))] <- diag(K*(p-1))
+      stabi[i] <- max(abs(eigen(Bc)$values)) <1
+  }
+  #sum(stabi)
+  return(stabi)
 }

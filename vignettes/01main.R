@@ -23,7 +23,7 @@ priors <- get_prior_minnesota(y = y, p = p, intercept=TRUE)
 #               is_tv = c(0,0,0) )
 
 inits <- list(samples = 100000, burnin = 20000, thin = 20)
-RhpcBLASctl::blas_set_num_threads(2)
+#RhpcBLASctl::blas_set_num_threads(2)
 
 ####################################################################
 {
@@ -80,7 +80,7 @@ save(T111_obj, file = "T111.RData")
 }
 ####################################################################
 
-setwd("/home/hoanguc3m/Downloads/WP11/")
+setwd("/home/hoanguc3m/Dropbox/WP11/")
 # library(fatBVARS)
 library(ggplot2)
 library(gridExtra)
@@ -123,8 +123,15 @@ plot_grid(p1, p2, p3, ncol = 1, align = "v")
 #grid.arrange(p1, p2, p3, nrow = 3, ncol = 1)
 dev.off()
 ####################################################################
+
 load("T111.RData")
 load("T000.RData")
+
+library(gridExtra)
+library(ggthemr)
+# ggthemr('flat')
+ggthemr('solarized')
+
 Nu_mat111 <- T111_obj$store_nu
 Nu_mat000 <- T000_obj$store_nu
 ndraws <- nrow(Nu_mat000)
@@ -132,9 +139,11 @@ varname <- c("TBILL 3M", "S10-3M", "BAA spread")
 gg_nu_mat <- function(i){
   data_nu <- data.frame(nu = c(Nu_mat000[,i], Nu_mat111[,i]), Models = c(rep("T000", ndraws), rep("T111", ndraws)))
   max_nu <- max(c(Nu_mat000[,i], Nu_mat111[,i]))
-  ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) + scale_colour_ggthemr_d() +
-    geom_histogram(position = "identity", alpha = 0.8, bins = 30) + xlim(0,max_nu) +
-    geom_density(position = "identity", alpha = 0.5) + ylab(expression(nu)) + xlab(varname[i]) + theme_bw() + theme(legend.position="bottom")
+
+  ggplot(data_nu, aes(x=nu,..density.., colour = Models, fill = Models, linetype = Models) ) + scale_colour_ggthemr_d() +
+    geom_density(position = "identity", alpha = 0.25, adjust = 1.5, size=1.1) + ylab(expression(nu)) + xlab(varname[i])  +
+    xlim(4, max_nu) + theme_light() + scale_linetype_manual(values=c("dotted", "longdash")) + theme(legend.position="bottom")
+
 }
 
 p1 <- gg_nu_mat(1)
@@ -151,9 +160,11 @@ Sigma_h000 <- T000_obj$store_Sigh
 gg_sigma_mat <- function(i){
   data_nu <- data.frame(nu = c(Sigma_h000[,i], Sigma_h111[,i]), Models = c(rep("T000", ndraws), rep("T111", ndraws)))
   max_nu <- max(c(Sigma_h000[,i], Sigma_h111[,i]))
-  ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) + scale_colour_ggthemr_d() +
-    geom_histogram(position = "identity", alpha = 0.8, bins = 30) + xlim(0,max_nu) +
-    geom_density(position = "identity", alpha = 0.5) + ylab(expression(sigma[h]^2)) + xlab(varname[i]) + theme_bw() + theme(legend.position="bottom")
+
+  ggplot(data_nu, aes(x=nu,..density.., colour = Models, fill = Models, linetype = Models) ) + scale_colour_ggthemr_d() +
+    geom_density(position = "identity", alpha = 0.25, adjust = 1.5, size=1.1) + ylab(expression(sigma[h]^2)) + xlab(varname[i])  +
+    theme_light() + scale_linetype_manual(values=c("dotted", "longdash")) + theme(legend.position="bottom")
+
 }
 p1 <- gg_sigma_mat(1)
 p2 <- gg_sigma_mat(2)
@@ -175,7 +186,7 @@ gg_sigmaAB_mat <- function(i){
   data_nu <- data.frame(nu = c((Sigma_ab111[,i])) , Models = c(rep("T111", ndraws)))
   max_nu <- (max(c(Sigma_ab111[,i])))
   ggplot(data_nu, aes(x=nu,..density.., fill = Models, colour = Models)) + scale_colour_ggthemr_d() +
-    geom_histogram(position = "identity", alpha = 0.8, bins = 30) + xlim(0,max_nu) +
+    xlim(0,max_nu) + #geom_histogram(position = "identity", alpha = 0.8, bins = 30) +
     geom_density(position = "identity", alpha = 0.5) + xlab(bquote(.(varname[i]))) + ylab(expression(sigma^2)) + theme_bw() + theme(legend.position="bottom")
 }
 l <- list()
@@ -199,12 +210,12 @@ plot_grid(l[[1]], l[[11]], l[[21]],
 dev.off()
 
 ####################################################################
-ab111_mean <- cbind( apply(T111_obj$store_beta, MARGIN = c(2,3), FUN = mean),
-                     apply(T111_obj$store_alp, MARGIN = c(2,3), FUN = mean))
-ab111_q10 <- cbind( apply(T111_obj$store_beta, MARGIN = c(2,3), FUN = quantile, probs = c(0.1)),
-                     apply(T111_obj$store_alp, MARGIN = c(2,3), FUN = quantile, probs = c(0.1)))
-ab111_q90 <- cbind( apply(T111_obj$store_beta, MARGIN = c(2,3), FUN = quantile, probs = c(0.9)),
-                    apply(T111_obj$store_alp, MARGIN = c(2,3), FUN = quantile, probs = c(0.9)))
+ab111_mean <- cbind( apply(get_post(T111_obj,element = "beta"), MARGIN = c(2,3), FUN = mean),
+                     apply(get_post(T111_obj,element = "alpha"), MARGIN = c(2,3), FUN = mean))
+ab111_q10 <- cbind( apply(get_post(T111_obj,element = "beta"), MARGIN = c(2,3), FUN = quantile, probs = c(0.1)),
+                     apply(get_post(T111_obj,element = "alpha"), MARGIN = c(2,3), FUN = quantile, probs = c(0.1)))
+ab111_q90 <- cbind( apply(get_post(T111_obj,element = "beta"), MARGIN = c(2,3), FUN = quantile, probs = c(0.9)),
+                    apply(get_post(T111_obj,element = "alpha"), MARGIN = c(2,3), FUN = quantile, probs = c(0.9)))
 
 gg_TVPAB_mat <- function(i){
   Time <- tail(seq(as.Date("1953/04/01"), as.Date("2021/08/01"), "months"), 818)
@@ -241,9 +252,9 @@ plot_grid(l[[1]], l[[11]], l[[21]],
 dev.off()
 
 ####################################################################
-h111_mean <- ( apply(T111_obj$store_h, MARGIN = c(2,3), FUN = mean))
-h111_q10 <- ( apply(T111_obj$store_h, MARGIN = c(2,3), FUN = quantile, probs = c(0.1)))
-h111_q90 <- ( apply(T111_obj$store_h, MARGIN = c(2,3), FUN = quantile, probs = c(0.9)) )
+h111_mean <- ( apply(get_post(T111_obj,element = "h"), MARGIN = c(2,3), FUN = mean))
+h111_q10 <- ( apply(get_post(T111_obj,element = "h"), MARGIN = c(2,3), FUN = quantile, probs = c(0.1)))
+h111_q90 <- ( apply(get_post(T111_obj,element = "h"), MARGIN = c(2,3), FUN = quantile, probs = c(0.9)) )
 varname <- c("H[1]", "H[2]", "H[3]")
 gg_H_mat <- function(i){
   Time <- tail(seq(as.Date("1953/04/01"), as.Date("2021/08/01"), "months"), 818)

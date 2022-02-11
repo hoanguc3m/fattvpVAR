@@ -4,10 +4,10 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
   # Chan paper on large hybrid VAR
   arguments <- eval(substitute(alist(...)))
   lambda1 <- ifelse(is.null(arguments$lambda1), 0.2, arguments$lambda1)
-  lambda2 <- ifelse(is.null(arguments$lambda2), 0.25, arguments$lambda2)
+  lambda2 <- ifelse(is.null(arguments$lambda2), 0.5, arguments$lambda2)
   lambda3 <- ifelse(is.null(arguments$lambda3), 1, arguments$lambda3)
-  lambda4 <- ifelse(is.null(arguments$lambda4), 1, arguments$lambda4)
-  hyper_ab <- 0.1
+  lambda4 <- ifelse(is.null(arguments$lambda4), 10, arguments$lambda4)
+  hyper_ab <- 1
   hyper_h <- 1
 
   t_max <- nrow(y)

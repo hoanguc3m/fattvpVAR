@@ -3,7 +3,8 @@ library(Matrix)
 library(fattvpVAR)
 library(profvis)
 library(invgamma)
-setwd("/home/hoanguc3m/Downloads/WP11/")
+setwd("/Backup/Ongoing/WP11/")
+setwd("/home/hoanguc3m/MEGA/WP11")
 dataraw <- read_excel("/home/hoanguc3m/MEGA/HybridVAR/EconLetter/temp/Data210927.xlsx",
                       col_types = c("text", "numeric", "numeric", "numeric"))
 p <- 3 # number of lags
