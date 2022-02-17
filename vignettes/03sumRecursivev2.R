@@ -24,7 +24,7 @@
                      qwCRPS_2t = array(NA, dim = c(t_pred,3,length_recursive))
   )
 
-  G001 = G111 = T000 = T001 = T111 = G000
+  G011 = T011 = G001 = G111 = T000 = T001 = T111 = G000
 
   folderDir <- "/home/hoanguc3m/MEGA/WP11/G000/"
   filenames <- mixedsort(sort(list.files(path = folderDir)))
@@ -82,6 +82,35 @@
   G001$mqwCRPS_2t <- apply(G001$qwCRPS_2t, MARGIN = c(1,2), FUN = mean)
 
   ##########################################
+  ##########################################
+  folderDir <- "/home/hoanguc3m/MEGA/WP11/G011/"
+  filenames <- mixedsort(sort(list.files(path = folderDir)))
+
+  for (i in c(1:length(filenames))){
+    load(paste(folderDir,filenames[i], sep = ""))
+    G011$log_pred[,,i] <- out_recursive$forecast_err$log_pred
+    G011$emp_CDF[,,i] <- out_recursive$forecast_err$emp_CDF
+    G011$MSFE[,,i] <- out_recursive$forecast_err$MSFE
+    G011$MAFE[,,i] <- out_recursive$forecast_err$MAFE
+    G011$clog_pred[,,i] <- out_recursive$forecast_err$clog_pred
+    G011$emp_CDF[,,i] <- out_recursive$forecast_err$emp_CDF
+    G011$cMSFE[,,i] <- out_recursive$forecast_err$cMSFE
+    G011$cMAFE[,,i] <- out_recursive$forecast_err$cMAFE
+    G011$CRPS[,,i] <- out_recursive$forecast_err$CRPS
+    G011$qwCRPS_2t[,,i] <- out_recursive$forecast_err$qwCRPS_2t
+  }
+
+  G011$mlog_pred <- apply(G011$log_pred, MARGIN = c(1,2), FUN = mean)
+  G011$mMSFE <- apply(G011$MSFE, MARGIN = c(1,2), FUN = mean)
+  G011$mMAFE <- apply(G011$MAFE, MARGIN = c(1,2), FUN = mean)
+  G011$mclog_pred <- apply(G011$clog_pred, MARGIN = c(1,2), FUN = mean)
+  G011$mcMSFE <- apply(G011$cMSFE, MARGIN = c(1,2), FUN = mean)
+  G011$mcMAFE <- apply(G011$cMAFE, MARGIN = c(1,2), FUN = mean)
+  G011$mCRPS <- apply(G011$CRPS, MARGIN = c(1,2), FUN = mean)
+  G011$mqwCRPS_2t <- apply(G011$qwCRPS_2t, MARGIN = c(1,2), FUN = mean)
+
+  ############################################
+
   folderDir <- "/home/hoanguc3m/MEGA/WP11/G111/"
   filenames <- mixedsort(sort(list.files(path = folderDir)))
 
@@ -161,6 +190,33 @@
   T001$mcMAFE <- apply(T001$cMAFE, MARGIN = c(1,2), FUN = mean)
   T001$mCRPS <- apply(T001$CRPS, MARGIN = c(1,2), FUN = mean)
   T001$mqwCRPS_2t <- apply(T001$qwCRPS_2t, MARGIN = c(1,2), FUN = mean)
+
+  ##########################################
+  folderDir <- "/home/hoanguc3m/MEGA/WP11/T011/"
+  filenames <- mixedsort(sort(list.files(path = folderDir)))
+
+  for (i in c(1:length(filenames))){
+    load(paste(folderDir,filenames[i], sep = ""))
+    T011$log_pred[,,i] <- out_recursive$forecast_err$log_pred
+    T011$emp_CDF[,,i] <- out_recursive$forecast_err$emp_CDF
+    T011$MSFE[,,i] <- out_recursive$forecast_err$MSFE
+    T011$MAFE[,,i] <- out_recursive$forecast_err$MAFE
+    T011$clog_pred[,,i] <- out_recursive$forecast_err$clog_pred
+    T011$emp_CDF[,,i] <- out_recursive$forecast_err$emp_CDF
+    T011$cMSFE[,,i] <- out_recursive$forecast_err$cMSFE
+    T011$cMAFE[,,i] <- out_recursive$forecast_err$cMAFE
+    T011$CRPS[,,i] <- out_recursive$forecast_err$CRPS
+    T011$qwCRPS_2t[,,i] <- out_recursive$forecast_err$qwCRPS_2t
+  }
+
+  T011$mlog_pred <- apply(T011$log_pred, MARGIN = c(1,2), FUN = mean)
+  T011$mMSFE <- apply(T011$MSFE, MARGIN = c(1,2), FUN = mean)
+  T011$mMAFE <- apply(T011$MAFE, MARGIN = c(1,2), FUN = mean)
+  T011$mclog_pred <- apply(T011$clog_pred, MARGIN = c(1,2), FUN = mean)
+  T011$mcMSFE <- apply(T011$cMSFE, MARGIN = c(1,2), FUN = mean)
+  T011$mcMAFE <- apply(T011$cMAFE, MARGIN = c(1,2), FUN = mean)
+  T011$mCRPS <- apply(T011$CRPS, MARGIN = c(1,2), FUN = mean)
+  T011$mqwCRPS_2t <- apply(T011$qwCRPS_2t, MARGIN = c(1,2), FUN = mean)
 
   ###############################################
   folderDir <- "/home/hoanguc3m/MEGA/WP11/T111/"
@@ -318,15 +374,15 @@ DM_Andrews.test <- function(e1, e2, alternative = c("two.sided", "less", "greate
             class = "htest")
 }
 
-Print_DmTableMSE <- function(G000MSFE,G001MSFE,G111MSFE,
-                             T000MSFE,T001MSFE,T111MSFE,
+Print_DmTableMSE <- function(G000MSFE,G001MSFE,G011MSFE, G111MSFE,
+                             T000MSFE,T001MSFE,T011MSFE, T111MSFE,
                              Table3_MSFE_Var1){
   Table3_MSFE_Var1_add <- Table3_MSFE_Var1
   id <- c(1,2,3,6,12,24)
   for (i in c(1:length(id))){
-    tmpMat <- cbind(G000MSFE[id[i],],G001MSFE[id[i],],G111MSFE[id[i],],
-                    T000MSFE[id[i],],T001MSFE[id[i],],T111MSFE[id[i],])
-    for (j in c(2:6)){
+    tmpMat <- cbind(G000MSFE[id[i],],G001MSFE[id[i],],G011MSFE[id[i],],G111MSFE[id[i],],
+                    T000MSFE[id[i],],T001MSFE[id[i],],T011MSFE[id[i],],T111MSFE[id[i],])
+    for (j in c(2:8)){
       #tmpDmtest <- Diebold.test(tmpMat[,1] , tmpMat[,j], h=id[i], power = 1, alternative = "greater")
       #tmpDmtest <- DM_Andrews.test(tmpMat[,1] , tmpMat[,j], h=id[i], power = 1, alternative = "greater")
       tmpDmtest <- ClackMcCracken.test(tmpMat[,1] , tmpMat[,j], h=id[i], power = 1, alternative = "greater")
@@ -341,15 +397,15 @@ Print_DmTableMSE <- function(G000MSFE,G001MSFE,G111MSFE,
 
 }
 
-Print_DmTableDens <- function(G000MSFE,G001MSFE,G111MSFE,
-                              T000MSFE,T001MSFE,T111MSFE,
+Print_DmTableDens <- function(G000MSFE,G001MSFE,G011MSFE, G111MSFE,
+                              T000MSFE,T001MSFE,T011MSFE, T111MSFE,
                               Table3_MSFE_Var1){
   Table3_MSFE_Var1_add <- Table3_MSFE_Var1
   id <- c(1,2,3,6,12,24)
   for (i in c(1:length(id))){
-    tmpMat <- cbind(G000MSFE[id[i],],G001MSFE[id[i],],G111MSFE[id[i],],
-                    T000MSFE[id[i],],T001MSFE[id[i],],T111MSFE[id[i],])
-    for (j in c(2:6)){
+    tmpMat <- cbind(G000MSFE[id[i],],G001MSFE[id[i],],G011MSFE[id[i],],G111MSFE[id[i],],
+                    T000MSFE[id[i],],T001MSFE[id[i],],T011MSFE[id[i],],T111MSFE[id[i],])
+    for (j in c(2:8)){
       #tmpDmtest <- Diebold.test(tmpMat[,1] , tmpMat[,j], h=id[i], power = 1, alternative = "less")
       #tmpDmtest <- DM_Andrews.test(tmpMat[,1] , tmpMat[,j], h=id[i], power = 1, alternative = "less")
       tmpDmtest <- ClackMcCracken.test(tmpMat[,1] , tmpMat[,j], h=id[i], power = 1, alternative = "less")
@@ -366,194 +422,156 @@ Print_DmTableDens <- function(G000MSFE,G001MSFE,G111MSFE,
 }
 # MSE
 {
-  Table3_MSFE_Var1 <- matrix(NA, ncol = 6, nrow = 6)
+  Table3_MSFE_Var1 <- matrix(NA, ncol = 6, nrow = 8)
   Table3_MSFE_Var1[1,] <- G000$mMSFE[c(1,2,3,6,12,24),1]
   Table3_MSFE_Var1[2,] <- G001$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
-  Table3_MSFE_Var1[3,] <- G111$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
-  Table3_MSFE_Var1[4,] <- T000$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
-  Table3_MSFE_Var1[5,] <- T001$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
-  Table3_MSFE_Var1[6,] <- T111$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
+  Table3_MSFE_Var1[3,] <- G011$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
+  Table3_MSFE_Var1[4,] <- G111$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
+  Table3_MSFE_Var1[5,] <- T000$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
+  Table3_MSFE_Var1[6,] <- T001$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
+  Table3_MSFE_Var1[7,] <- T011$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
+  Table3_MSFE_Var1[8,] <- T111$mMSFE[c(1,2,3,6,12,24),1] / G000$mMSFE[c(1,2,3,6,12,24),1]
 
-  Table3_MSFE_Var1 <- matrix(sprintf("%.3f", Table3_MSFE_Var1), ncol = 6, nrow = 6)
-  rownames(Table3_MSFE_Var1) <- c("G000", "G001", "G111", "T000", "T001", "T111")
+  Table3_MSFE_Var1 <- matrix(sprintf("%.3f", Table3_MSFE_Var1), ncol = 6, nrow = 8)
+  rownames(Table3_MSFE_Var1) <- c("G000", "G001", "G011", "G111", "T000", "T001", "T011", "T111")
   colnames(Table3_MSFE_Var1) <- c("1", "2", "3", "6", "12", "24")
 
 
   Print_DmTableMSE(G000$MSFE[,1,],
                    G001$MSFE[,1,],
+                   G011$MSFE[,1,],
                    G111$MSFE[,1,],
                    T000$MSFE[,1,],
                    T001$MSFE[,1,],
+                   T011$MSFE[,1,],
                    T111$MSFE[,1,], Table3_MSFE_Var1)
 
-  Table3_MSFE_Var2 <- matrix(NA, ncol = 6, nrow = 6)
+  Table3_MSFE_Var2 <- matrix(NA, ncol = 6, nrow = 8)
   Table3_MSFE_Var2[1,] <- G000$mMSFE[c(1,2,3,6,12,24),2]
   Table3_MSFE_Var2[2,] <- G001$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
-  Table3_MSFE_Var2[3,] <- G111$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
-  Table3_MSFE_Var2[4,] <- T000$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
-  Table3_MSFE_Var2[5,] <- T001$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
-  Table3_MSFE_Var2[6,] <- T111$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
+  Table3_MSFE_Var2[3,] <- G011$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
+  Table3_MSFE_Var2[4,] <- G111$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
+  Table3_MSFE_Var2[5,] <- T000$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
+  Table3_MSFE_Var2[6,] <- T001$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
+  Table3_MSFE_Var2[7,] <- T011$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
+  Table3_MSFE_Var2[8,] <- T111$mMSFE[c(1,2,3,6,12,24),2] / G000$mMSFE[c(1,2,3,6,12,24),2]
 
-  Table3_MSFE_Var2 <- matrix(sprintf("%.3f", Table3_MSFE_Var2), ncol = 6, nrow = 6)
-  rownames(Table3_MSFE_Var2) <- c("G000", "G001", "G111", "T000", "T001", "T111")
+  Table3_MSFE_Var2 <- matrix(sprintf("%.3f", Table3_MSFE_Var2), ncol = 6, nrow = 8)
+  rownames(Table3_MSFE_Var2) <- c("G000", "G001", "G011", "G111", "T000", "T001", "T011", "T111")
   colnames(Table3_MSFE_Var2) <- c("1", "2", "3", "6", "12", "24")
 
 
   Print_DmTableMSE(G000$MSFE[,2,],
                    G001$MSFE[,2,],
+                   G011$MSFE[,2,],
                    G111$MSFE[,2,],
                    T000$MSFE[,2,],
                    T001$MSFE[,2,],
+                   T011$MSFE[,2,],
                    T111$MSFE[,2,], Table3_MSFE_Var2)
 
-  Table3_MSFE_Var3 <- matrix(NA, ncol = 6, nrow = 6)
+  Table3_MSFE_Var3 <- matrix(NA, ncol = 6, nrow = 8)
   Table3_MSFE_Var3[1,] <- G000$mMSFE[c(1,2,3,6,12,24),3]
   Table3_MSFE_Var3[2,] <- G001$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
-  Table3_MSFE_Var3[3,] <- G111$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
-  Table3_MSFE_Var3[4,] <- T000$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
-  Table3_MSFE_Var3[5,] <- T001$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
-  Table3_MSFE_Var3[6,] <- T111$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
-
-  Table3_MSFE_Var3 <- matrix(sprintf("%.3f", Table3_MSFE_Var3), ncol = 6, nrow = 6)
-  rownames(Table3_MSFE_Var3) <- c("G000", "G001", "G111", "T000", "T001", "T111")
+  Table3_MSFE_Var3[3,] <- G011$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
+  Table3_MSFE_Var3[4,] <- G111$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
+  Table3_MSFE_Var3[5,] <- T000$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
+  Table3_MSFE_Var3[6,] <- T001$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
+  Table3_MSFE_Var3[7,] <- T011$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
+  Table3_MSFE_Var3[8,] <- T111$mMSFE[c(1,2,3,6,12,24),3] / G000$mMSFE[c(1,2,3,6,12,24),3]
+  Table3_MSFE_Var3 <- matrix(sprintf("%.3f", Table3_MSFE_Var3), ncol = 6, nrow = 8)
+  rownames(Table3_MSFE_Var3) <- c("G000", "G001", "G011", "G111", "T000", "T001", "T011", "T111")
   colnames(Table3_MSFE_Var3) <- c("1", "2", "3", "6", "12", "24")
 
 
   Print_DmTableMSE(G000$MSFE[,3,],
                    G001$MSFE[,3,],
+                   G011$MSFE[,3,],
                    G111$MSFE[,3,],
                    T000$MSFE[,3,],
                    T001$MSFE[,3,],
+                   T011$MSFE[,3,],
                    T111$MSFE[,3,], Table3_MSFE_Var3)
 }
 
 # LP
 {
-  Table4_LP_Var1 <-  matrix(NA, ncol = 6, nrow = 6)
+  Table4_LP_Var1 <-  matrix(NA, ncol = 6, nrow = 8)
 
   Table4_LP_Var1[1,] <- G000$mlog_pred[c(1,2,3,6,12,24),1]
   Table4_LP_Var1[2,] <- G001$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
-  Table4_LP_Var1[3,] <- G111$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
-  Table4_LP_Var1[4,] <- T000$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
-  Table4_LP_Var1[5,] <- T001$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
-  Table4_LP_Var1[6,] <- T111$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
+  Table4_LP_Var1[3,] <- G011$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
+  Table4_LP_Var1[4,] <- G111$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
+  Table4_LP_Var1[5,] <- T000$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
+  Table4_LP_Var1[6,] <- T001$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
+  Table4_LP_Var1[7,] <- T011$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
+  Table4_LP_Var1[8,] <- T111$mlog_pred[c(1,2,3,6,12,24),1] - G000$mlog_pred[c(1,2,3,6,12,24),1]
 
-  Table4_LP_Var1 <- matrix(sprintf("%.3f", Table4_LP_Var1), ncol = 6, nrow = 6)
-  row.names(Table4_LP_Var1) <- c("G000", "G001", "G111", "T000", "T001", "T111")
+  Table4_LP_Var1 <- matrix(sprintf("%.3f", Table4_LP_Var1), ncol = 6, nrow = 8)
+  row.names(Table4_LP_Var1) <- c("G000", "G001", "G011", "G111", "T000", "T001", "T011", "T111")
 
   Print_DmTableDens(G000$log_pred[,1,],
                     G001$log_pred[,1,],
+                    G011$log_pred[,1,],
                     G111$log_pred[,1,],
                     T000$log_pred[,1,],
                     T001$log_pred[,1,],
+                    T011$log_pred[,1,],
                     T111$log_pred[,1,],
                     Table4_LP_Var1)
 
-  Table4_LP_Var2 <-  matrix(NA, ncol = 6, nrow = 6)
+  Table4_LP_Var2 <-  matrix(NA, ncol = 6, nrow = 8)
 
   Table4_LP_Var2[1,] <- G000$mlog_pred[c(1,2,3,6,12,24),2]
   Table4_LP_Var2[2,] <- G001$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
-  Table4_LP_Var2[3,] <- G111$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
-  Table4_LP_Var2[4,] <- T000$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
-  Table4_LP_Var2[5,] <- T001$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
-  Table4_LP_Var2[6,] <- T111$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
+  Table4_LP_Var2[3,] <- G011$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
+  Table4_LP_Var2[4,] <- G111$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
+  Table4_LP_Var2[5,] <- T000$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
+  Table4_LP_Var2[6,] <- T001$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
+  Table4_LP_Var2[7,] <- T011$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
+  Table4_LP_Var2[8,] <- T111$mlog_pred[c(1,2,3,6,12,24),2] - G000$mlog_pred[c(1,2,3,6,12,24),2]
 
-  Table4_LP_Var2 <- matrix(sprintf("%.3f", Table4_LP_Var2), ncol = 6, nrow = 6)
-  row.names(Table4_LP_Var2) <- c("G000", "G001", "G111", "T000", "T001", "T111")
+  Table4_LP_Var2 <- matrix(sprintf("%.3f", Table4_LP_Var2), ncol = 6, nrow = 8)
+  row.names(Table4_LP_Var2) <- c("G000", "G001", "G011", "G111", "T000", "T001", "T011", "T111")
 
   Print_DmTableDens(G000$log_pred[,2,],
                     G001$log_pred[,2,],
+                    G011$log_pred[,2,],
                     G111$log_pred[,2,],
                     T000$log_pred[,2,],
                     T001$log_pred[,2,],
+                    T011$log_pred[,2,],
                     T111$log_pred[,2,],
                     Table4_LP_Var2)
 
-  Table4_LP_Var3 <-  matrix(NA, ncol = 6, nrow = 6)
+  Table4_LP_Var3 <-  matrix(NA, ncol = 6, nrow = 8)
 
   Table4_LP_Var3[1,] <- G000$mlog_pred[c(1,2,3,6,12,24),3]
   Table4_LP_Var3[2,] <- G001$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
-  Table4_LP_Var3[3,] <- G111$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
-  Table4_LP_Var3[4,] <- T000$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
-  Table4_LP_Var3[5,] <- T001$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
-  Table4_LP_Var3[6,] <- T111$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
+  Table4_LP_Var3[3,] <- G011$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
+  Table4_LP_Var3[4,] <- G111$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
+  Table4_LP_Var3[5,] <- T000$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
+  Table4_LP_Var3[6,] <- T001$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
+  Table4_LP_Var3[7,] <- T011$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
+  Table4_LP_Var3[8,] <- T111$mlog_pred[c(1,2,3,6,12,24),3] - G000$mlog_pred[c(1,2,3,6,12,24),3]
 
-  Table4_LP_Var3 <- matrix(sprintf("%.3f", Table4_LP_Var3), ncol = 6, nrow = 6)
-  row.names(Table4_LP_Var3) <- c("G000", "G001", "G111", "T000", "T001", "T111")
+  Table4_LP_Var3 <- matrix(sprintf("%.3f", Table4_LP_Var3), ncol = 6, nrow = 8)
+  row.names(Table4_LP_Var3) <- c("G000", "G001", "G011", "G111", "T000", "T001", "T011", "T111")
 
   Print_DmTableDens(G000$log_pred[,3,],
                     G001$log_pred[,3,],
+                    G011$log_pred[,3,],
                     G111$log_pred[,3,],
                     T000$log_pred[,3,],
                     T001$log_pred[,3,],
+                    T011$log_pred[,3,],
                     T111$log_pred[,3,],
                     Table4_LP_Var3)
 }
 
 # CRPS
 {
-  Table5_CRPS_Var1 <-  matrix(NA, ncol = 6, nrow = 6)
-
-  Table5_CRPS_Var1[1,] <- G000$mCRPS[c(1,2,3,6,12,24),1]
-  Table5_CRPS_Var1[2,] <- G001$mCRPS[c(1,2,3,6,12,24),1] - G000$mCRPS[c(1,2,3,6,12,24),1]
-  Table5_CRPS_Var1[3,] <- G111$mCRPS[c(1,2,3,6,12,24),1] - G000$mCRPS[c(1,2,3,6,12,24),1]
-  Table5_CRPS_Var1[4,] <- T000$mCRPS[c(1,2,3,6,12,24),1] - G000$mCRPS[c(1,2,3,6,12,24),1]
-  Table5_CRPS_Var1[5,] <- T001$mCRPS[c(1,2,3,6,12,24),1] - G000$mCRPS[c(1,2,3,6,12,24),1]
-  Table5_CRPS_Var1[6,] <- T111$mCRPS[c(1,2,3,6,12,24),1] - G000$mCRPS[c(1,2,3,6,12,24),1]
-
-  Table5_CRPS_Var1 <- matrix(sprintf("%.3f", Table5_CRPS_Var1), ncol = 6, nrow = 6)
-  row.names(Table5_CRPS_Var1) <- c("G000", "G001", "G111", "T000", "T001", "T111")
-
-  Print_DmTableDens(G000$CRPS[,1,],
-                    G001$CRPS[,1,],
-                    G111$CRPS[,1,],
-                    T000$CRPS[,1,],
-                    T001$CRPS[,1,],
-                    T111$CRPS[,1,],
-                    Table5_CRPS_Var1)
-
-  Table5_CRPS_Var2 <-  matrix(NA, ncol = 6, nrow = 6)
-
-  Table5_CRPS_Var2[1,] <- G000$mCRPS[c(1,2,3,6,12,24),2]
-  Table5_CRPS_Var2[2,] <- G001$mCRPS[c(1,2,3,6,12,24),2] - G000$mCRPS[c(1,2,3,6,12,24),2]
-  Table5_CRPS_Var2[3,] <- G111$mCRPS[c(1,2,3,6,12,24),2] - G000$mCRPS[c(1,2,3,6,12,24),2]
-  Table5_CRPS_Var2[4,] <- T000$mCRPS[c(1,2,3,6,12,24),2] - G000$mCRPS[c(1,2,3,6,12,24),2]
-  Table5_CRPS_Var2[5,] <- T001$mCRPS[c(1,2,3,6,12,24),2] - G000$mCRPS[c(1,2,3,6,12,24),2]
-  Table5_CRPS_Var2[6,] <- T111$mCRPS[c(1,2,3,6,12,24),2] - G000$mCRPS[c(1,2,3,6,12,24),2]
-
-  Table5_CRPS_Var2 <- matrix(sprintf("%.3f", Table5_CRPS_Var2), ncol = 6, nrow = 6)
-  row.names(Table5_CRPS_Var2) <- c("G000", "G001", "G111", "T000", "T001", "T111")
-
-  Print_DmTableDens(G000$CRPS[,2,],
-                    G001$CRPS[,2,],
-                    G111$CRPS[,2,],
-                    T000$CRPS[,2,],
-                    T001$CRPS[,2,],
-                    T111$CRPS[,2,],
-                    Table5_CRPS_Var2)
-
-  Table5_CRPS_Var3 <-  matrix(NA, ncol = 6, nrow = 6)
-
-  Table5_CRPS_Var3[1,] <- G000$mCRPS[c(1,2,3,6,12,24),3]
-  Table5_CRPS_Var3[2,] <- G001$mCRPS[c(1,2,3,6,12,24),3] - G000$mCRPS[c(1,2,3,6,12,24),3]
-  Table5_CRPS_Var3[3,] <- G111$mCRPS[c(1,2,3,6,12,24),3] - G000$mCRPS[c(1,2,3,6,12,24),3]
-  Table5_CRPS_Var3[4,] <- T000$mCRPS[c(1,2,3,6,12,24),3] - G000$mCRPS[c(1,2,3,6,12,24),3]
-  Table5_CRPS_Var3[5,] <- T001$mCRPS[c(1,2,3,6,12,24),3] - G000$mCRPS[c(1,2,3,6,12,24),3]
-  Table5_CRPS_Var3[6,] <- T111$mCRPS[c(1,2,3,6,12,24),3] - G000$mCRPS[c(1,2,3,6,12,24),3]
-
-  Table5_CRPS_Var3 <- matrix(sprintf("%.3f", Table5_CRPS_Var3), ncol = 6, nrow = 6)
-  row.names(Table5_CRPS_Var3) <- c("G000", "G001", "G111", "T000", "T001", "T111")
-
-  Print_DmTableDens(G000$CRPS[,3,],
-                    G001$CRPS[,3,],
-                    G111$CRPS[,3,],
-                    T000$CRPS[,3,],
-                    T001$CRPS[,3,],
-                    T111$CRPS[,3,],
-                    Table5_CRPS_Var3)
-}
-{
-  Table5_qwCRPS_2t_Var1 <-  matrix(NA, ncol = 6, nrow = 6)
+  Table5_qwCRPS_2t_Var1 <-  matrix(NA, ncol = 6, nrow = 8)
 
   Table5_qwCRPS_2t_Var1[1,] <- G000$mqwCRPS_2t[c(1,2,3,6,12,24),1]
   Table5_qwCRPS_2t_Var1[2,] <- G001$mqwCRPS_2t[c(1,2,3,6,12,24),1] - G000$mqwCRPS_2t[c(1,2,3,6,12,24),1]
@@ -562,8 +580,8 @@ Print_DmTableDens <- function(G000MSFE,G001MSFE,G111MSFE,
   Table5_qwCRPS_2t_Var1[5,] <- T001$mqwCRPS_2t[c(1,2,3,6,12,24),1] - G000$mqwCRPS_2t[c(1,2,3,6,12,24),1]
   Table5_qwCRPS_2t_Var1[6,] <- T111$mqwCRPS_2t[c(1,2,3,6,12,24),1] - G000$mqwCRPS_2t[c(1,2,3,6,12,24),1]
 
-  Table5_qwCRPS_2t_Var1 <- matrix(sprintf("%.3f", Table5_qwCRPS_2t_Var1), ncol = 6, nrow = 6)
-  row.names(Table5_qwCRPS_2t_Var1) <- c("G000", "G001", "G111", "T000", "T001", "T111")
+  Table5_qwCRPS_2t_Var1 <- matrix(sprintf("%.3f", Table5_qwCRPS_2t_Var1), ncol = 6, nrow = 8)
+  row.names(Table5_qwCRPS_2t_Var1) <- c("G000", "G001", "G011", "G111", "T000", "T001", "T011", "T111")
 
   Print_DmTableDens(G000$qwCRPS_2t[,1,],
                     G001$qwCRPS_2t[,1,],
@@ -573,7 +591,7 @@ Print_DmTableDens <- function(G000MSFE,G001MSFE,G111MSFE,
                     T111$qwCRPS_2t[,1,],
                     Table5_qwCRPS_2t_Var1)
 
-  Table5_qwCRPS_2t_Var2 <-  matrix(NA, ncol = 6, nrow = 6)
+  Table5_qwCRPS_2t_Var2 <-  matrix(NA, ncol = 6, nrow = 8)
 
   Table5_qwCRPS_2t_Var2[1,] <- G000$mqwCRPS_2t[c(1,2,3,6,12,24),2]
   Table5_qwCRPS_2t_Var2[2,] <- G001$mqwCRPS_2t[c(1,2,3,6,12,24),2] - G000$mqwCRPS_2t[c(1,2,3,6,12,24),2]
@@ -582,8 +600,8 @@ Print_DmTableDens <- function(G000MSFE,G001MSFE,G111MSFE,
   Table5_qwCRPS_2t_Var2[5,] <- T001$mqwCRPS_2t[c(1,2,3,6,12,24),2] - G000$mqwCRPS_2t[c(1,2,3,6,12,24),2]
   Table5_qwCRPS_2t_Var2[6,] <- T111$mqwCRPS_2t[c(1,2,3,6,12,24),2] - G000$mqwCRPS_2t[c(1,2,3,6,12,24),2]
 
-  Table5_qwCRPS_2t_Var2 <- matrix(sprintf("%.3f", Table5_qwCRPS_2t_Var2), ncol = 6, nrow = 6)
-  row.names(Table5_qwCRPS_2t_Var2) <- c("G000", "G001", "G111", "T000", "T001", "T111")
+  Table5_qwCRPS_2t_Var2 <- matrix(sprintf("%.3f", Table5_qwCRPS_2t_Var2), ncol = 6, nrow = 8)
+  row.names(Table5_qwCRPS_2t_Var2) <- c("G000", "G001", "G011", "G111", "T000", "T001", "T011", "T111")
 
   Print_DmTableDens(G000$qwCRPS_2t[,2,],
                     G001$qwCRPS_2t[,2,],
@@ -593,7 +611,7 @@ Print_DmTableDens <- function(G000MSFE,G001MSFE,G111MSFE,
                     T111$qwCRPS_2t[,2,],
                     Table5_qwCRPS_2t_Var2)
 
-  Table5_qwCRPS_2t_Var3 <-  matrix(NA, ncol = 6, nrow = 6)
+  Table5_qwCRPS_2t_Var3 <-  matrix(NA, ncol = 6, nrow = 8)
 
   Table5_qwCRPS_2t_Var3[1,] <- G000$mqwCRPS_2t[c(1,2,3,6,12,24),3]
   Table5_qwCRPS_2t_Var3[2,] <- G001$mqwCRPS_2t[c(1,2,3,6,12,24),3] - G000$mqwCRPS_2t[c(1,2,3,6,12,24),3]
@@ -602,8 +620,8 @@ Print_DmTableDens <- function(G000MSFE,G001MSFE,G111MSFE,
   Table5_qwCRPS_2t_Var3[5,] <- T001$mqwCRPS_2t[c(1,2,3,6,12,24),3] - G000$mqwCRPS_2t[c(1,2,3,6,12,24),3]
   Table5_qwCRPS_2t_Var3[6,] <- T111$mqwCRPS_2t[c(1,2,3,6,12,24),3] - G000$mqwCRPS_2t[c(1,2,3,6,12,24),3]
 
-  Table5_qwCRPS_2t_Var3 <- matrix(sprintf("%.3f", Table5_qwCRPS_2t_Var3), ncol = 6, nrow = 6)
-  row.names(Table5_qwCRPS_2t_Var3) <- c("G000", "G001", "G111", "T000", "T001", "T111")
+  Table5_qwCRPS_2t_Var3 <- matrix(sprintf("%.3f", Table5_qwCRPS_2t_Var3), ncol = 6, nrow = 8)
+  row.names(Table5_qwCRPS_2t_Var3) <- c("G000", "G001", "G011", "G111", "T000", "T001", "T011", "T111")
 
   Print_DmTableDens(G000$qwCRPS_2t[,3,],
                     G001$qwCRPS_2t[,3,],

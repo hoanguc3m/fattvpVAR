@@ -1,6 +1,6 @@
 #' @export
-ML_StudentTVPSV <- function(Chain, numCores = 4){
-  #Chain <- T111_obj
+ML_GaussTVPSVTest <- function(Chain, numCores = 4){
+  #Chain <- G101_obj
   priors <- Chain$data$priors
   data = Chain$data
   Y0 <- data$y0
@@ -86,14 +86,9 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
   h0_list <- Normal_approx(Chain$store_h0, ndraws = M)
   h0_gen <- h0_list$new_samples
 
-
-  Nu_gen_list <- Nu_Gamma_approx(Chain$store_nu, ndraws = M)
-  Nu_gen <- Nu_gen_list$new_samples
-  w_mean <- apply(Chain$store_w, MARGIN = c(2,3), mean)
-  h_mean <- apply(Chain$store_h, MARGIN = c(2,3), mean)
-
   sum_log_prop <- Sigma_h_list$sum_log_prop + Sigma_beta_list$sum_log_prop + Sigma_alp_list$sum_log_prop +
-    h0_list$sum_log_prop + Nu_gen_list$sum_log_prop + alpbeta0_list$sum_log_prop # beta0_list$sum_log_prop + alp0_list$sum_log_prop
+    h0_list$sum_log_prop + alpbeta0_list$sum_log_prop # beta0_list$sum_log_prop + alp0_list$sum_log_prop
+
 
   ## prior borrow from inference
   abeta0 <- priors$b0
@@ -103,20 +98,18 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
 
   ah0 <- c(log(priors$sigma^2))
   Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
-  nu_gam_a <- 2 # priors$nu_gam_a
-  nu_gam_b <- 0.1 # priors$nu_gam_b
 
   sum_log_prior <- apply( cbind(dgamma(Sigma_h_gen, shape = 0.5, rate = 0.5 / priors$hyper_h, log = T),
                                 dgamma(Sigma_beta_gen[,idx_b_tv, drop = FALSE], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
                                 dgamma(Sigma_alp_gen[,idx_a_tv, drop = FALSE], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
                                 t(dnorm(t(h0_gen), mean = ah0, sd = sqrt(Vh0), log = T)),
                                 t(dnorm(t(beta0_gen), mean = abeta0, sd = sqrt(Vbeta0), log = T)),
-                                t(dnorm(t(alp0_gen), mean = aalp0, sd = sqrt(Valp0), log = T)),
-                                dgamma(Nu_gen, shape = nu_gam_a, rate = nu_gam_b, log = T)),  MARGIN = 1, FUN = sum)
+                                t(dnorm(t(alp0_gen), mean = aalp0, sd = sqrt(Valp0), log = T)) ),  MARGIN = 1, FUN = sum)
 
   #sum_log = rep(0, M);
   RhpcBLASctl::blas_set_num_threads(1)
-
+  yt <- t(shortY)
+  xt <- fatBVARS::makeRegressor(shortY, Y0, t_max, K, p)
   sum_log <- parallel::mclapply(1:M,
                                 FUN = function(j) {
                                   Sigbeta = Sigma_beta_gen[j, ]
@@ -125,43 +118,18 @@ ML_StudentTVPSV <- function(Chain, numCores = 4){
                                   beta0 = beta0_gen[j, ]
                                   alp0 = alp0_gen[j, ]
                                   h0 = h0_gen[j, ]
-                                  nu = Nu_gen[j, ]
 
 
-                                  llike = 0
-                                  for (ii in c(1:K)){
-                                    ki <- K*p+1+ii-1 # Number of theta in equation ii
+                                  A <- A0_mat(alp0_gen[j,], K)
+                                  B <- solve(A) %*% matrix(beta0_gen[j, ], nrow = K, byrow = TRUE)
 
-                                    if (ii > 1) {
-                                      X <- cbind(X2, -shortY[,1:(ii-1)])
-                                    } else {
-                                      X <- X2
-                                    }
+                                  sigma_h <- Sigma_h_gen[j, ]
+                                  h0 <- h0_gen[j, ]
+                                  ytilde <- as.numeric(A %*% (yt - B %*% xt)) # from dim K * t_max to (Kt_max) * 1
 
 
 
-                                    if (is_tv[ii] == 1){
-                                      Sigthetai <- c( Sigbeta[count_seqb[[ii]] ], Sigalp[count_seqa[[ii]] ])
-                                      bigXi <- SURform(X * reprow(sqrt(Sigthetai), t_max) ) # "dgCMatrix"
-                                      thetaXi0 <- c(beta0[count_seqb[[ii]] ], alp0[count_seqa[[ii]] ])
-                                      Yi <- shortY[,ii] - X %*% thetaXi0
-
-                                      thetai0 <- rep(0, ki)
-                                      Sigthetai <- rep(1, ki)
-
-                                      llikei = intlike_Ttvpsv(Yi = Yi, bigXi = bigXi,
-                                                                Sigthetai = Sigthetai, Sig_hi = Sigh[ii], h0i = h0[ii],
-                                                                thetai0 = thetai0, nui = nu[ii])
-                                      #   llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = SURform(X), h0i = h0[ii], thetai0 = thetai0)
-
-                                    }  else {
-                                      bigXi = X
-                                      thetai0 <- c(beta0[count_seqb[[ii]] ], alp0[ count_seqa[[ii]] ])
-                                      llikei = intlike_Tvarsv(Yi = shortY[,ii], thetai0 = thetai0, Sig_hi = Sigh[ii], bigXi = bigXi,
-                                                              h0i = h0[ii], nui = nu[ii])
-                                    }
-                                    llike = llike + llikei
-                                  }
+                                  llike <- fatBVARS::int_h_Gaussian(ytilde, h0 = h0, sigma_h = sigma_h, t_max = t_max, K=K, R = 100)
                                   llike
 
                                 }, mc.cores = numCores)

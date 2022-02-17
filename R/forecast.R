@@ -19,7 +19,7 @@ get_forecast <- function(Chain, y0 = NULL, t_pred = 24, Nfsample = NULL){
 
   ndraws <- nrow(Chain$store_h0)
 
-  if (is.null(Nfsample) || (Nfsample == ndraws) ){
+  if (is.null(Nfsample) ){
     Nfsample <- ndraws
   }
 
@@ -56,6 +56,7 @@ get_forecast <- function(Chain, y0 = NULL, t_pred = 24, Nfsample = NULL){
 
   for (i in frange){
     count_id <- count_id+1
+    #cat(count_id)
 
     h <- tail(store_h[i,,],1)
     Sigh <- store_Sigh[i,]

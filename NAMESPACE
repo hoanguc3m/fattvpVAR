@@ -2,9 +2,12 @@
 
 export(A0_mat)
 export(B0_mat)
+export(Gamma_approx)
 export(LL_tnorm)
 export(ML_GaussTVPSV)
+export(ML_GaussTVPSVTest)
 export(ML_StudentTVPSV)
+export(ML_StudentTVPSVTest)
 export(Normal_approx)
 export(Normal_trunc_approx)
 export(Nu_Gamma_approx)

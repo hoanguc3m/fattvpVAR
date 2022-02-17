@@ -59,7 +59,7 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
         if(ii==kk){
           Vi[indx] <- lambda1/jj^2
         } else{
-          Vi[indx] <- (lambda1 * lambda2)/(jj ^2) *(sigmasq[ii] / sigmasq[kk])
+          Vi[indx] <- (lambda1 * lambda2)/(jj ^2) * (sigmasq[ii] / sigmasq[kk])
         }
       }
     }
@@ -82,6 +82,9 @@ get_prior_minnesota <- function(y, p, intercept=TRUE, ...){
              sigma = sqrt(sigmasq),
              hyper_ab = hyper_ab,
              hyper_h = hyper_h)
+  pr$nu_gam_a = 2
+  pr$nu_gam_b = 0.1
+
   return(pr)
 }
 

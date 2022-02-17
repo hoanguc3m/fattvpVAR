@@ -1,11 +1,16 @@
 library(fattvpVAR)
 numCores = 16
-setwd("/home/hoanguc3m/Downloads/WP11/")
+setwd("/Backup/Ongoing/WP11/")
 
 ##########################################################################
 
 load("G000.RData")
 G000_ML <- ML_GaussTVPSV(Chain = G000_obj, numCores = numCores)
+save(G000_ML, file = "G000_ML.RData")
+rm(G000_ML, G000_obj)
+
+load("G000.RData")
+G000_ML <- ML_GaussTVPSVTest(Chain = G000_obj, numCores = numCores)
 save(G000_ML, file = "G000_ML.RData")
 rm(G000_ML, G000_obj)
 

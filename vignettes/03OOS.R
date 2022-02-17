@@ -36,6 +36,16 @@ recursive001 <- parallel::mclapply(561:797,
 save(recursive001, "RecursiveG001.RData")
 
 #####################################################
+is_tv = c(0,1,1)
+recursive011 <- parallel::mclapply(561:797,
+                                   FUN = function(t_start) {
+                                     recursive_seperate(y_raw, is_tv = is_tv, t_start = t_start,
+                                                        t_pred = 24, K = ncol(y_raw), p = p,
+                                                        dist = "Gaussian", outname = NULL)
+                                   }, mc.cores = numCores)
+
+
+#####################################################
 is_tv = c(1,1,1)
 recursive111 <- parallel::mclapply(561:797,
                                    FUN = function(t_start) {
@@ -68,6 +78,15 @@ recursive001 <- parallel::mclapply(561:797,
                                                         dist = "Student", outname = NULL)
                                    }, mc.cores = numCores)
 save(recursive001, "RecursiveT001.RData")
+
+#####################################################
+is_tv = c(0,1,1)
+recursive011 <- parallel::mclapply(561:797,
+                                   FUN = function(t_start) {
+                                     recursive_seperate(y_raw, is_tv = is_tv, t_start = t_start,
+                                                        t_pred = 24, K = ncol(y_raw), p = p,
+                                                        dist = "Student", outname = NULL)
+                                   }, mc.cores = numCores)
 
 #####################################################
 is_tv = c(1,1,1)

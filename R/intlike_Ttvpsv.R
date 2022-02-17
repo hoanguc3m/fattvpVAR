@@ -35,9 +35,7 @@ denTy_h <- function(Yi,hc,Sigthetai,bigXi,thetai0,ws){
 }
 
 #' @export
-intlike_Ttvpsv <- function(Yi, Xi, Sigthetai, Sig_hi, h0i, thetai0, nui){
-
-  bigXi = SURform(Xi)
+intlike_Ttvpsv <- function(Yi, bigXi, Sigthetai, Sig_hi, h0i, thetai0, nui){
 
   K = length(Sig_hi)
   t_max = length(Yi)/K;
@@ -66,7 +64,7 @@ intlike_Ttvpsv <- function(Yi, Xi, Sigthetai, Sig_hi, h0i, thetai0, nui){
   HinvSH_h = Matrix::t(Hh) %*% SH %*% Hh
   alph = Matrix::solve(Hh, sparseMatrix(i = 1:K, j = rep(1,K), x = h0i, dims = c(t_max*K,1)))
 
-  e_h = 1; ht = rep(h0i,t_max);
+  e_h = 1; ht = as.numeric(log(Yi^2+0.001))
   e_w = 1; wt = rep(1,t_max); logwt = rep(0, t_max);
   countout = 0;
   while ( (e_h> .01 || e_w > 0.01) & countout < 100){
@@ -136,22 +134,6 @@ intlike_Ttvpsv <- function(Yi, Xi, Sigthetai, Sig_hi, h0i, thetai0, nui){
     countout = countout + 1;
   }
 
-  # if (countout == 100){
-  #   ht = rep(h0i,t_max);
-  #   invSig = sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = exp(-ht)/wt)
-  #   XinvSig = Matrix::t(bigXi) %*% invSig;
-  #   HinvSH_theta = Matrix::t(Htheta) %*% invStheta %*% Htheta;
-  #   Ktheta = HinvSH_theta + XinvSig %*% bigXi;
-  #   dtheta = XinvSig %*% Yi + HinvSH_theta %*% alptheta;
-  #   # thetahat = Matrix::solve(Ktheta,dtheta)
-  #   #CKtheta = Matrix::chol(Ktheta)
-  #   #zhat = apply((CKtheta %*% solve(bigXi)^2),MARGIN = 2, FUN = sum) + (Yi-bigXi %*% thetahat)^2;
-  #   qq = bigXi %*% Matrix::solve(Ktheta, cbind(Matrix::t(bigXi), dtheta) );
-  #   zhat = Matrix::diag(qq) + (Yi-qq[,t_max+1])^2;
-  #
-  #   einvhttzhat = exp(-ht)*zhat;
-  #   HQ = -HinvSH_h -.5*sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = einvhttzhat)
-  # }
 
   invSig = sparseMatrix(i = 1:(t_max*K),j = 1:(t_max*K), x = exp(-ht) / wt )
   XinvSig = Matrix::t(bigXi) %*% invSig
@@ -187,5 +169,6 @@ intlike_Ttvpsv <- function(Yi, Xi, Sigthetai, Sig_hi, h0i, thetai0, nui){
 
   maxllike = max(store_llike);
   intlike = log(mean(exp(store_llike-maxllike))) + maxllike;intlike
+
   return(intlike)
 }

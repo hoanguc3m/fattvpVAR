@@ -313,3 +313,52 @@ check_stability <- function(store_beta, store_alpha, p, K){
   #sum(stabi)
   return(stabi)
 }
+
+
+#' @export
+Gamma_approx <- function(mcmc_sample, ndraws){
+
+  # MASS::fitdistr(1/Sigma_mat[,1], "gamma")
+  # MASS::fitdistr(1/Sigma_mat[,3]/1000, "gamma")
+  # MASS::fitdistr(Sigma_mat[,3], "exponential")
+
+  nElements <- ncol(mcmc_sample)
+  new_samples <- matrix(NA, ncol = nElements, nrow = ndraws, dimnames = list(c(), colnames(mcmc_sample)))
+  Density_prop <-  matrix(NA, ncol = nElements, nrow = ndraws)
+  shape_param <- rep(0, nElements)
+  rate_param <- rep(0, nElements)
+  mcmc_mean <- apply(mcmc_sample, 2, mean)
+  mcmc_sd <- apply(mcmc_sample, 2, sd)
+
+  for (i in c(1:nElements)){
+    if (mcmc_sd[i] > 0){
+      fit.gamma <- tryCatch({
+        fitdistrplus::fitdist(as.numeric(mcmc_sample[,i]), distr = "gamma", method = "mle")
+      }, error = function(e) {
+        fitdistrplus::fitdist(as.numeric(mcmc_sample[,i]), distr = "exp", method = "mle")
+      })
+      if (fit.gamma$distname == "gamma"){
+        shape_param[i] <- fit.gamma$estimate[1]
+        rate_param[i] <- fit.gamma$estimate[2]
+        new_samples[,i] <- rgamma(ndraws, shape = shape_param[i], rate_param[i])
+        Density_prop[,i] <- dgamma(new_samples[,i],
+                                   shape = shape_param[i],
+                                   rate = rate_param[i], log = T)
+      }
+      if (fit.gamma$distname == "exp"){
+        rate_param[i] <- fit.gamma$estimate[1]
+        new_samples[,i] <- rexp(ndraws, rate =  rate_param[i])
+        Density_prop[,i] <- dexp(new_samples[,i], rate = rate_param[i], log = T)
+
+      }
+
+    } else {
+      new_samples[,i] <- as.numeric(mcmc_sample[,i])
+      Density_prop[,i] <- 0
+    }
+
+  }
+
+  return(list(new_samples = new_samples,
+              sum_log_prop = apply(Density_prop, 1, sum)))
+}

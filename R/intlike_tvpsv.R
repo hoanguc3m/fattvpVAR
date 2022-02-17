@@ -63,7 +63,7 @@ intlike_tvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0){
   HinvSH_h = Matrix::t(Hh) %*% SH %*% Hh
   alph = Matrix::solve(Hh, sparseMatrix(i = 1:K, j = rep(1,K), x = h0i, dims = c(t_max*K,1)))
 
-  e_h = 1; ht = rep(h0i,t_max);
+  e_h = 1; ht = as.numeric(log(Yi^2+0.001))
   countout = 0;
   while ( e_h> .01 & countout < 100){
     # E-step
@@ -77,7 +77,7 @@ intlike_tvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0){
     # zhat = apply((bigXi %*% Matrix::solve(CKtheta) )^2, MARGIN = 1, FUN = sum) + (Yi-bigXi%*%thetahat)^2;
     # more robust and slightly faster - Sune Karlsson
     qq = bigXi %*% Matrix::solve(Ktheta, cbind(Matrix::t(bigXi), dtheta) );
-    zhat = Matrix::diag(qq) + (Yi-qq[,t_max+1])^2;
+    zhat = as.numeric( Matrix::diag(qq) + (Yi-qq[,t_max+1])^2)
 
 
     # M-step
@@ -86,7 +86,7 @@ intlike_tvpsv <- function(Yi,Sigthetai,Sig_hi,bigXi,h0i,thetai0){
 
       einvhttzhat = exp(-htt)*zhat;
       gQ = -HinvSH_h %*% (htt-alph) -.5*(1-einvhttzhat);
-      HQ = -HinvSH_h -.5 * sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = einvhttzhat)
+      HQ = -HinvSH_h -.5 * Matrix::sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = einvhttzhat)
       newhtt = htt - Matrix::solve(HQ,gQ);
       e_hj = mean(abs(as.numeric(newhtt-htt)));
       htt = newhtt;

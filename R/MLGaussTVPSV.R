@@ -1,6 +1,7 @@
 #' @export
 ML_GaussTVPSV <- function(Chain, numCores = 4){
   #Chain <- G101_obj
+  priors <- Chain$data$priors
   data = Chain$data
   Y0 <- data$y0
   shortY <- data$y
@@ -29,113 +30,81 @@ ML_GaussTVPSV <- function(Chain, numCores = 4){
     X2[,((ii-1)*K+1):(ii*K)] <- tmpY[(p-ii+1):(t_max+p-ii),]
   }
   X2 <- cbind(rep(1, t_max), X2)
-  # X1 <- matrix(0, K*t_max,k_alp)
-  # count <- 0
-  # for (ii in 2:K){
-  #   X1[seq(ii,K*t_max,by = K),(count+1):(count+ii-1)] <- - shortY[,1:ii-1]
-  #   count <- count + ii-1
-  # }
 
   idx_b_tv <- (kronecker(is_tv,matrix(1,nrow = K*p+1,ncol = 1))==1)   # index for time-varying betas
   idx_a_tv <- matrix(FALSE, nrow = k_alp, ncol = 1)            # construct index for time-varying alphas
-  count <- 0
-  for (ii in 2:K){
+
+  k_a_eq <- seq(0, K-1)
+  id_a <- cbind(cumsum(k_a_eq) - k_a_eq + 1,cumsum(k_a_eq))
+  count_seqa <- list(); count_seqb <- list()
+  count_seqa[[1]] <- 0; count_seqb[[1]] <- seq(1, k_beta_div_K)
+  for (ii in c(2:K)){
+    count_seqa[[ii]] <- seq(id_a[ii,1], id_a[ii,2])
+    count_seqb[[ii]] <- ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)
+
     if (is_tv[ii] == 1){
-      idx_a_tv[ (count+1):(count+ii-1)] <- TRUE
+      idx_a_tv[ count_seqa[[ii]]] <- TRUE
     }
-    count <- count + ii-1
   }
 
   # Sigma approx
-  Sigma_h_gen <- Chain$store_Sigh # Always SV
-  Sigma_h_list <- Normal_approx(log(Chain$store_Sigh), ndraws = M) # Change to normal
-  Sigma_h_gen <- exp(Sigma_h_list$new_samples) # Change to square
-  Sigma_h_list$sum_log_prop <- Sigma_h_list$sum_log_prop - apply(Sigma_h_list$new_samples, MARGIN = 1, FUN = sum) # Jacobian
+  Sigma_h_list <- Gamma_approx(mcmc_sample = Chain$store_Sigh, ndraws = M)
+  Sigma_h_gen <- Sigma_h_list$new_samples
+  #sum_log_prop <- sum_log_prop + Sigma_h_gen$sum_log_prop
+
 
   Sigma_beta_gen <- matrix(0, ncol = ncol(Chain$store_Sigbeta), nrow = M) #
   if (sum(idx_b_tv) > 0 ){
-    Sigma_beta_list <- Normal_approx(log(Chain$store_Sigbeta[,idx_b_tv, drop = FALSE]), ndraws = M) # Change to normal
-    Sigma_beta_gen[,idx_b_tv] <- exp(Sigma_beta_list$new_samples) # Change to square
-    Sigma_beta_list$sum_log_prop <- Sigma_beta_list$sum_log_prop - apply(Sigma_beta_list$new_samples, MARGIN = 1, FUN = sum) # Jacobian
+    Sigma_beta_list <- Gamma_approx(mcmc_sample = Chain$store_Sigbeta[,idx_b_tv, drop = FALSE], ndraws = M)
+    Sigma_beta_gen[,idx_b_tv] <- Sigma_beta_list$new_samples
   } else {
     Sigma_beta_list <- list(sum_log_prop = 0)
   }
 
   Sigma_alp_gen <- matrix(0, ncol = ncol(Chain$store_Sigalp), nrow = M) #
   if (sum(idx_a_tv) > 0 ){
-    Sigma_alp_list <- Normal_approx(log(Chain$store_Sigalp[,idx_a_tv, drop = FALSE]), ndraws = M) # Change to normal
-    Sigma_alp_gen[,idx_a_tv] <- exp(Sigma_alp_list$new_samples) # Change to square
-    Sigma_alp_list$sum_log_prop <- Sigma_alp_list$sum_log_prop - apply(Sigma_alp_list$new_samples, MARGIN = 1, FUN = sum) # Jacobian
-    } else {
+    Sigma_alp_list <- Gamma_approx(mcmc_sample = Chain$store_Sigalp[,idx_a_tv, drop = FALSE], ndraws = M)
+    Sigma_alp_gen[,idx_a_tv] <- Sigma_alp_list$new_samples
+  } else {
     Sigma_alp_list <- list(sum_log_prop = 0)
   }
 
-  # # Sigma approx
-  # Sigma_h_gen <- Chain$store_Sigh # Always SV
-  # Sigma_h_list <- Normal_approx(Chain$store_Sigh^0.5, ndraws = M) # Change to normal
-  # Sigma_h_gen <- Sigma_h_list$new_samples^2 # Change to square
-  # Sigma_h_list$sum_log_prop <- Sigma_h_list$sum_log_prop - apply(log(abs(Sigma_h_list$new_samples)), MARGIN = 1, FUN = sum) # Jacobian
+  # # beta0, alp0, h0 approx  and obtain IS draws
+  # beta0_list <- Normal_approx(Chain$store_beta0, ndraws = M)
+  # beta0_gen <- beta0_list$new_samples
   #
-  # Sigma_beta_gen <- matrix(0, ncol = ncol(Chain$store_Sigbeta), nrow = M) #
-  # if (sum(idx_b_tv) > 0 ){
-  #   Sigma_beta_list <- Normal_approx(Chain$store_Sigbeta[,idx_b_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
-  #   Sigma_beta_gen[,idx_b_tv] <- Sigma_beta_list$new_samples^2 # Change to square
-  #   Sigma_beta_list$sum_log_prop <- Sigma_beta_list$sum_log_prop - apply(log(abs(Sigma_beta_list$new_samples)), MARGIN = 1, FUN = sum) # Jacobian
-  # } else {
-  #   Sigma_beta_list <- list(sum_log_prop = 0)
-  # }
-  #
-  # Sigma_alp_gen <- matrix(0, ncol = ncol(Chain$store_Sigalp), nrow = M) #
-  # if (sum(idx_a_tv) > 0 ){
-  #   Sigma_alp_list <- Normal_approx(Chain$store_Sigalp[,idx_a_tv, drop = FALSE]^0.5, ndraws = M) # Change to normal
-  #   Sigma_alp_gen[,idx_a_tv] <- Sigma_alp_list$new_samples^2 # Change to square
-  #   Sigma_alp_list$sum_log_prop <- Sigma_alp_list$sum_log_prop - apply(log(abs(Sigma_alp_list$new_samples)), MARGIN = 1, FUN = sum) # Jacobian
-  # } else {
-  #   Sigma_alp_list <- list(sum_log_prop = 0)
-  # }
-  # beta0, alp0, h0 approx  and obtain IS draws
-  #beta0_gen <- Chain$store_beta0
-  beta0_list <- Normal_approx(Chain$store_beta0, ndraws = M)
-  beta0_gen <- beta0_list$new_samples
+  # #alp0_gen <- Chain$store_alp0
+  # alp0_list <- Normal_approx(Chain$store_alp0, ndraws = M)
+  # alp0_gen <- alp0_list$new_samples
 
-  #alp0_gen <- Chain$store_alp0
-  alp0_list <- Normal_approx(Chain$store_alp0, ndraws = M)
-  alp0_gen <- alp0_list$new_samples
+  # beta0, alp0, h0 approx  and obtain IS draws
+  alpbeta0_list <- Normal_approx(cbind(Chain$store_beta0, Chain$store_alp0), ndraws = M)
+  beta0_gen <- alpbeta0_list$new_samples[,1:k_beta]
+  alp0_gen <- alpbeta0_list$new_samples[,(k_beta+1):(k_beta+k_alp)]
 
   #h0_gen <- Chain$store_h0
   h0_list <- Normal_approx(Chain$store_h0, ndraws = M)
   h0_gen <- h0_list$new_samples
 
   sum_log_prop <- Sigma_h_list$sum_log_prop + Sigma_beta_list$sum_log_prop + Sigma_alp_list$sum_log_prop +
-    h0_list$sum_log_prop + beta0_list$sum_log_prop + alp0_list$sum_log_prop
+                  h0_list$sum_log_prop + alpbeta0_list$sum_log_prop # beta0_list$sum_log_prop + alp0_list$sum_log_prop
 
 
   ## prior borrow from inference
-  abeta0 <- matrix(0, nrow = k_beta, ncol = 1);
-  Vbeta0 <- 10*matrix(1, nrow = k_beta, ncol = 1);
-  aalp0 <- matrix(0, nrow = k_alp, ncol = 1);
-  Valp0 <- 10*matrix(1, nrow = k_alp, ncol = 1);
+  abeta0 <- priors$b0
+  Vbeta0 <- priors$V_b_prior
+  aalp0 <- priors$a0
+  Valp0 <- priors$V_a0_prior
 
-  # EstMdl1 <- arima(shortY[,1] ,order = c(1,0,0))
-  # EstMdl2 <- arima(shortY[,2] ,order = c(1,0,0))
-  # EstMdl3 <- arima(shortY[,3] ,order = c(1,0,0))
-  #
-  # ah0 <- c(log(EstMdl1$sigma2), log(EstMdl2$sigma2), log(EstMdl3$sigma2))
-  # Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
-
-  EstMdl1 <- var(shortY[,1])
-  EstMdl2 <- var(shortY[,2])
-  EstMdl3 <- var(shortY[,3])
-
-  ah0 <- c(log(EstMdl1), log(EstMdl2), log(EstMdl3))
+  ah0 <- c(log(priors$sigma^2))
   Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
 
   sum_log_prior <- apply( cbind(dgamma(Sigma_h_gen, shape = 0.5, rate = 0.5 / priors$hyper_h, log = T),
-                           dgamma(Sigma_beta_gen[,idx_b_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
-                           dgamma(Sigma_alp_gen[,idx_a_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
-                           dnorm(h0_gen, mean = ah0, sd = sqrt(Vh0), log = T),
-                           dnorm(beta0_gen, mean = abeta0, sd = sqrt(Vbeta0), log = T),
-                           dnorm(alp0_gen, mean = aalp0, sd = sqrt(Valp0), log = T)),  MARGIN = 1, FUN = sum)
+                           dgamma(Sigma_beta_gen[,idx_b_tv, drop = FALSE], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
+                           dgamma(Sigma_alp_gen[,idx_a_tv, drop = FALSE], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
+                           t(dnorm(t(h0_gen), mean = ah0, sd = sqrt(Vh0), log = T)),
+                           t(dnorm(t(beta0_gen), mean = abeta0, sd = sqrt(Vbeta0), log = T)),
+                           t(dnorm(t(alp0_gen), mean = aalp0, sd = sqrt(Valp0), log = T)) ),  MARGIN = 1, FUN = sum)
 
   #sum_log = rep(0, M);
   RhpcBLASctl::blas_set_num_threads(1)
@@ -148,31 +117,33 @@ ML_GaussTVPSV <- function(Chain, numCores = 4){
     beta0 = beta0_gen[j, ]
     alp0 = alp0_gen[j, ]
     h0 = h0_gen[j, ]
-    count = 0
+
     llike = 0
     for (ii in c(1:K)){
-      if (ii == 1){
-        count_seq <- 0
-        X <- X2
-      } else {
-        count_seq <- (count+1):(count+ii-1)
+      ki <- K*p+1+ii-1 # Number of theta in equation ii
+
+      if (ii > 1) {
         X <- cbind(X2, -shortY[,1:(ii-1)])
+      } else {
+        X <- X2
       }
 
-
       if (is_tv[ii] == 1){
-        bigXi = SURform(X)
-        Sigthetai = c( Sigbeta[ ((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], Sigalp[count_seq])
-        thetai0 = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
-        llikei = intlike_tvpsv(Yi = shortY[,ii], Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], thetai0 = thetai0)
+        Sigthetai <- c( Sigbeta[count_seqb[[ii]] ], Sigalp[count_seqa[[ii]] ])
+        bigXi <- SURform(X * reprow(sqrt(Sigthetai), t_max) ) # "dgCMatrix"
+        thetaXi0 <- c(beta0[count_seqb[[ii]] ], alp0[count_seqa[[ii]] ])
+        Yi <- shortY[,ii] - X %*% thetaXi0
+
+        thetai0 <- rep(0, ki)
+        Sigthetai <- rep(1, ki)
+        llikei = intlike_tvpsv(Yi = Yi, Sigthetai = Sigthetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii], thetai0 = thetai0)
       }  else {
         bigXi = X
-        thetai = c( beta0[((ii-1)*k_beta_div_K+1):(ii*k_beta_div_K)], alp0[count_seq] )
-        llikei = intlike_varsv(Yi = shortY[,ii], thetai = thetai, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii]);
+        thetai0 <- c(beta0[count_seqb[[ii]] ], alp0[ count_seqa[[ii]] ])
+        llikei = intlike_varsv(Yi = shortY[,ii], thetai0 = thetai0, Sig_hi = Sigh[ii], bigXi = bigXi, h0i = h0[ii])
       }
 
       llike = llike + llikei
-      count = count + ii-1
 
     }
 
@@ -188,5 +159,9 @@ ML_GaussTVPSV <- function(Chain, numCores = 4){
   ml = mean(bigml)
   mlstd = sd(bigml)/sqrt(20)
   return( list( LL = ml,
-                std = mlstd))
+                std = mlstd,
+                log_all = store_w,
+                log_intll = sum_log,
+                sum_log_prior = sum_log_prior,
+                sum_log_prop = sum_log_prop ))
 }

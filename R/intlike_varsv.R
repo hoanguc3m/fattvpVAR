@@ -1,5 +1,5 @@
 #' @export
-intlike_varsv <- function(Yi,thetai,Sig_hi,bigXi,h0i){
+intlike_varsv <- function(Yi,thetai0,Sig_hi,bigXi,h0i){
   max_loop = 100
   K = length(Sig_hi)
   t_max = length(Yi)/K;
@@ -16,15 +16,16 @@ intlike_varsv <- function(Yi,thetai,Sig_hi,bigXi,h0i){
   HinvSH_h = Matrix::t(Hh) %*% SH %*% Hh
 
   alph = Matrix::solve(Hh, sparseMatrix(i = 1:K, j = rep(1,K), x = h0i, dims = c(t_max*K,1)))
-  s2 = (Yi-bigXi %*% thetai)^2
-  ht = alph + .01*rnorm(t_max)
+  e = Yi - bigXi %*% thetai0
+  s2 = e^2
+  ht = log(s2 + 0.001)
 
   e_h = 1;
   count = 0;
   while ( e_h> .01 & count < max_loop){
     einvhts2 = exp(-ht)*s2
     gh = -HinvSH_h %*% (ht-alph) - 0.5*(1-einvhts2);
-    Gh = -HinvSH_h -.5*sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = einvhts2)
+    Gh = -HinvSH_h -.5* Matrix::sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = as.numeric(einvhts2))
     # avoid problems with scaling - diag(GGh) = 1 - Sune Karlsson
     # tt = 1./sqrt(abs(Matrix::diag(Gh)));
     # GGh = tt %*% Matrix::t(tt) * Gh ;
@@ -48,16 +49,12 @@ intlike_varsv <- function(Yi,thetai,Sig_hi,bigXi,h0i){
   c_pri = -t_max*K/2*log(2*pi) -.5*t_max*sum(log(Sig_hi))
   c_IS = -t_max*K/2*log(2*pi) + sum(log( Matrix::diag(CKh)))
 
-  e = Yi - bigXi %*% thetai
 
   R = 20
   store_llike = rep(0, R)
   for (i in c(1:R)){
         hc = ht + Matrix::solve(Matrix::t(CKh), rnorm(t_max*K))
-        llike = -t_max*K*0.5*log(2*pi) - 0.5*sum(hc) - 0.5*Matrix::t(e) %*%
-          Matrix::sparseMatrix(i = 1:(t_max*K),
-                               j = 1:(t_max*K),
-                               x = exp(-hc)) %*% e
+        llike = -t_max*K*0.5*log(2*pi) - 0.5*sum(hc) - 0.5 * sum(s2 * exp(-hc))
         store_llike[i] = as.numeric(llike + c_pri - 0.5*Matrix::t(hc-alph) %*% HinvSH_h %*% (hc-alph) -
                                       (c_IS - 0.5*Matrix::t(hc-ht) %*% Kh %*% (hc-ht) ))
   }

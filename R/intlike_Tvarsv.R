@@ -1,5 +1,5 @@
 #' @export
-intlike_Tvarsv <- function(Yi,thetai,Sig_hi,bigXi,h0i,nui,wi){
+intlike_Tvarsv <- function(Yi,thetai0,Sig_hi,bigXi,h0i,nui){
   max_loop = 100
   K = length(Sig_hi)
   t_max = length(Yi)/K;
@@ -15,41 +15,45 @@ intlike_Tvarsv <- function(Yi,thetai,Sig_hi,bigXi,h0i,nui,wi){
   SH = sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = rep(1/Sig_hi, t_max))
   HinvSH_h = Matrix::t(Hh) %*% SH %*% Hh
 
-  alph = Matrix::solve(Hh, sparseMatrix(i = 1:K, j = rep(1,K), x = h0i, dims = c(t_max*K,1)))
-  s2 = ((Yi-bigXi %*% thetai)/sqrt(wi))^2
-  s2 = (Yi-bigXi %*% thetai)^2
-  ht = alph + .01*rnorm(t_max)
+  alph = Matrix::solve(Hh, Matrix::sparseMatrix(i = 1:K, j = rep(1,K), x = h0i, dims = c(t_max*K,1)))
+  e = Yi - bigXi %*% thetai0  # Uni student
+  s2 = e^2
+  ht = log(s2 + 0.001)# alph + .01*rnorm(t_max)
 
-  e_h = 1;
-  countout = 0;
-  while ( e_h> .01 & countout < max_loop){
-    einvhts2 = exp(-ht)*s2
-    gh = -HinvSH_h %*% (ht-alph) - 0.5*(1-einvhts2);
-    Gh = -HinvSH_h -.5*sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = einvhts2)
-    # avoid problems with scaling - diag(GGh) = 1 - Sune Karlsson
-    # tt = 1./sqrt(abs(Matrix::diag(Gh)));
-    # GGh = tt %*% Matrix::t(tt) * Gh ;
-    # newht = ht - tt * (Matrix::solve(GGh, (tt*gh)))
-    newht = ht - Matrix::solve(Gh,gh)
-    e_h = max(abs(newht-ht))
-    ht = newht
-    countout = countout + 1
+  nu_vec <- rep(nui, t_max)
+  errh_out = 1;
+  while (errh_out> 0.001){
+    # E-step
+    s2_mod <- s2 * exp(-ht)  # Univariate student (y^2 exp(-h))
+    Eilam = (nu_vec+1)/(nu_vec + s2_mod)
+    s2Eilam = s2*Eilam
+    # M-step
+    htt = ht
+    errh_in = 1
+    while (errh_in> 0.001){
+      eht = exp(htt)
+      sieht = s2Eilam/eht
+      fh = -.5 + .5*sieht
+      Gh = .5*sieht
+      Kh = HinvSH_h + Matrix::sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = as.numeric(Gh))
+      newht = Matrix::solve(Kh, fh+Gh*htt+ HinvSH_h %*% alph)
+      errh_in = max(abs(newht-htt))
+      htt = newht
+    }
+
+    errh_out = max(abs(ht-htt))
+    ht = htt
   }
 
-  if (countout == max_loop){
-    ht = rep(h0i,t_max)
-    einvhts2 = exp(-ht)*s2
-    Gh = -HinvSH_h -.5*sparseMatrix(i =1:(t_max*K), j = 1:(t_max*K), x = as.numeric(einvhts2))
-  }
-
-  Kh = -Gh;
+  # compute negative Hessian
+  Gh = (nu_vec+1)/(2*nu_vec) * (s2*exp(ht)) / ((exp(ht) + s2/nu_vec )^2)
+  Kh = HinvSH_h + sparseMatrix(i = 1:(t_max*K), j = 1:(t_max*K), x = Gh)
   CKh = Matrix::t(Matrix::chol(Kh))
 
   # evaluate the importance weights
   c_pri = -t_max*K/2*log(2*pi) -.5*t_max*sum(log(Sig_hi))
   c_IS = -t_max*K/2*log(2*pi) + sum(log( Matrix::diag(CKh)))
 
-  e = Yi - bigXi %*% thetai
 
   R = 50
   store_llike = rep(0, R)
