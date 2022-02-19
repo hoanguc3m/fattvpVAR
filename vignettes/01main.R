@@ -4,27 +4,19 @@ library(fattvpVAR)
 library(profvis)
 library(invgamma)
 setwd("/home/hoanguc3m/Downloads/WP11/")
-dataraw <- read_excel("/home/hoanguc3m/MEGA/HybridVAR/EconLetter/temp/Data210927.xlsx",
-                      col_types = c("text", "numeric", "numeric", "numeric"))
-
-p <- 3 # number of lags
-atT <- 821
-
-
-y <- data.matrix(dataraw[(p+1):atT,c(2:4)])
-y0 <- data.matrix(dataraw[1:p,c(2:4)])
-priors <- get_prior_minnesota(y = y, p = p, intercept=TRUE)
-
-#vars::VARselect(y)
-
-# inits <- list(samples = 20000,
-#               burnin = 5000,
-#               thin = 4,
-#               is_tv = c(0,0,0) )
-
-inits <- list(samples = 100000, burnin = 20000, thin = 20)
+# dataraw <- read_excel("/home/hoanguc3m/MEGA/HybridVAR/EconLetter/temp/Data210927.xlsx",
+#                       col_types = c("text", "numeric", "numeric", "numeric"))
+#
+# p <- 3 # number of lags
+# atT <- 821
+#
+#
+# y <- data.matrix(dataraw[(p+1):atT,c(2:4)])
+# y0 <- data.matrix(dataraw[1:p,c(2:4)])
+# priors <- get_prior_minnesota(y = y, p = p, intercept=TRUE)
+# inits <- list(samples = 100000, burnin = 20000, thin = 20)
 #RhpcBLASctl::blas_set_num_threads(2)
-
+load("~/Dropbox/WP11/Code/fattvpVAR/data/Spread.RData")
 ####################################################################
 {
 inits$is_tv = c(0,0,0); G000_obj <- fitTVPGaussSV(y, y0, p, priors, inits)

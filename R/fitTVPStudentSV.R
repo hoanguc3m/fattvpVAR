@@ -148,12 +148,18 @@ fitTVPStudentSV <- function(y, y0, p, priors, inits){
             Sbeta0[ count_seqb[[ii]] ], Salp0[count_seqa[[ii]] ] )
 
         theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
-        thetai0 <- backsolve( theta.prec.chol,
-                              backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
-                                         upper.tri = T, transpose = T )
-                              + rnorm(ki) )
-        ab_sample <- thetai0[1:ki]
-        Sab_sample <- thetai0[(ki+1):(2*ki)]
+        while (TRUE) {
+          thetai0 <- backsolve( theta.prec.chol,
+                                backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
+                                           upper.tri = T, transpose = T )
+                                + rnorm(ki) )
+          ab_sample <- thetai0[1:ki]
+          Sab_sample <- thetai0[(ki+1):(2*ki)]
+          if (all(Sab_sample > 0) ) {
+            break
+          }
+        }
+
         beta0[count_seqb[[ii]] ] <- ab_sample[1:k_beta_div_K]
         Sigbeta[count_seqb[[ii]] ] <- Sab_sample[1:k_beta_div_K]^2
         if ( ii > 1){

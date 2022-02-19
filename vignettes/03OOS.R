@@ -3,13 +3,13 @@ library(Matrix)
 library(fattvpVAR)
 library(profvis)
 library(invgamma)
-setwd("/Backup/Ongoing/WP11/")
 setwd("/home/hoanguc3m/MEGA/WP11")
-dataraw <- read_excel("/home/hoanguc3m/MEGA/HybridVAR/EconLetter/temp/Data210927.xlsx",
-                      col_types = c("text", "numeric", "numeric", "numeric"))
-p <- 3 # number of lags
+# dataraw <- read_excel("/home/hoanguc3m/MEGA/HybridVAR/EconLetter/temp/Data210927.xlsx",
+#                       col_types = c("text", "numeric", "numeric", "numeric"))
+# p <- 3 # number of lags
+# y_raw = dataraw[,c(2:4)]
+load("~/Dropbox/WP11/Code/fattvpVAR/data/Spread.RData")
 y_raw = dataraw[,c(2:4)]
-c(dataraw[561,1], dataraw[797,1])
 
 
 RhpcBLASctl::blas_set_num_threads(1)
