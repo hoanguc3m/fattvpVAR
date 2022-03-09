@@ -128,7 +128,8 @@ sample_h_ele <- function(ytilde, sigma_h = 0.0001*diag(K), h0_mean = rep(0,K),
     for (i in c(1:K)){
       sigma_prmean <- h0_mean[i] # mean h_0
       sigma_prvar <- matrix(4)   # variance h_0
-      aux <- sigmahelper4(t(ytilde[ i,, drop =FALSE]^2), q, m_mean, u2, h[ i,, drop =FALSE], Zs, matrix(sigma_h[i]), sigma_prmean, sigma_prvar)
+      aux <- sigmahelper4(t(ytilde[ i,, drop =FALSE]^2), q, m_mean, u2,
+                          h[ i,, drop =FALSE], Zs, matrix(sigma_h[i]), sigma_prmean, sigma_prvar)
       h[i,] <- aux$Sigtdraw
       h0[i] <- as.numeric(aux$h0)
     }
@@ -172,7 +173,8 @@ sample_h_mod <- function(ytilde, sigma_h = 0.0001*diag(K), h0_mean = rep(0,K),
   for (i in c(1:K)){
     sigma_prmean <- h0_mean[i] # mean h_0
     sigma_prvar <- matrix(4)   # variance h_0
-    aux <- sigmahelper4(t(ytilde[ i,, drop =FALSE]^2), q, m_mean, u2, h[ i,, drop =FALSE], Zs, matrix(sigma_h[i,i]), sigma_prmean, sigma_prvar)
+    aux <- sigmahelper4(t(ytilde[ i,, drop =FALSE]^2), q, m_mean, u2,
+                        h[ i,, drop =FALSE], Zs, matrix(sigma_h[i,i]), sigma_prmean, sigma_prvar)
     h[i,] <- aux$Sigtdraw
     h0[i] <- as.numeric(aux$h0)
     h0mean[i] <- as.numeric(aux$h0mean)

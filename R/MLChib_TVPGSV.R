@@ -1,6 +1,6 @@
 #' @export
 MLChib_TVPGSV <- function(Chain, samples = 20000, burnin = 10000, thin = 1, numCores = 4){
-  # samples = 6000; burnin = 3000; thin = 1;
+  # samples = 25000; burnin = 5000; thin = 5;
   # numCores <- 16;
 
   P1 <- P2 <- P3 <- P4 <- P5 <- 0
@@ -39,29 +39,35 @@ MLChib_TVPGSV <- function(Chain, samples = 20000, burnin = 10000, thin = 1, numC
   inits$SigmaA <- SigmaA_med
   inits$sigma_h <- Sigmah_med
   inits$h0 <- H0_med
+  inits$h <- apply(Chain$store_h, MARGIN = c(2,3), FUN = mean)
+  inits$beta <- apply(Chain$store_beta, MARGIN = c(2,3), FUN = mean)
+  inits$alp <- apply(Chain$store_alp, MARGIN = c(2,3), FUN = mean)
 
   str(inits)
 
   Start = Sys.time()
 
   ChibLLP_chain <- ChibLLP_TVP_GSV(Chain, ndraws = 1000, numCores = numCores)
-  RhpcBLASctl::blas_set_num_threads(RhpcBLASctl::get_num_cores())
+  RhpcBLASctl::blas_set_num_threads(numCores)
 
   y <- Chain$data$y
   y0 <- Chain$data$y0
 
   cat("Pi( B*, A*, SigmaB*, SigmaA* | y, SigmaH*) \n ")
   P1 <- Chib_fitTVP_GSV(y, K = K, p = p, y0 = y0, priors = priors, inits = inits,
-                         samples = samples, burnin = burnin, thin = thin,
-                         fix_B = FALSE, fix_Sigma = TRUE,
-                         cal_B = TRUE,  cal_Sigma = FALSE)
+                        samples = samples, burnin = burnin, thin = thin,
+                        fix_B = FALSE, fix_Sigma = TRUE,
+                        cal_B = TRUE,  cal_Sigma = FALSE)
+  # P1 <- P1_list$lpost
+  aP1 <- logmeanexp(P1)
+  #aP1 <- P1_list$lpost_stable
   cat("Pi( SigmaH* | y) \n ")
   P2 <- Chib_fitTVP_GSV(y, K = K, p = p, y0 = y0, priors = priors, inits = inits,
-                         samples = samples, burnin = burnin, thin = thin,
-                         fix_B = FALSE, fix_Sigma = FALSE,
-                         cal_B = FALSE, cal_Sigma = TRUE)
+                        samples = samples, burnin = burnin, thin = thin,
+                        fix_B = FALSE, fix_Sigma = FALSE,
+                        cal_B = FALSE, cal_Sigma = TRUE)
 
-  CML_Chain <- ChibLLP_chain$LL - sum(logmeanexp(P1)) - logmeanexp(P2)
+  CML_Chain <- ChibLLP_chain$LL - sum(aP1) - logmeanexp(P2)
 
 
   elapsedTime = Sys.time() - Start
@@ -71,7 +77,7 @@ MLChib_TVPGSV <- function(Chain, samples = 20000, burnin = 10000, thin = 1, numC
               lprior = ChibLLP_chain$lprior,
               lc = ChibLLP_chain$lc,
               LLP_chain = ChibLLP_chain,
-              aP1 = logmeanexp(P1), aP2 = logmeanexp(P2), aP3 = logmeanexp(P3),
+              aP1 = aP1, aP2 = logmeanexp(P2), aP3 = logmeanexp(P3),
               aP4 = sum(logmeanexp(P4)), aP5 = sum(logmeanexp(P5)),
               P1 = P1, P2 = P2, P3 = P3, P4 = P4, P5 = P5,
               esttime = elapsedTime)
@@ -80,9 +86,9 @@ MLChib_TVPGSV <- function(Chain, samples = 20000, burnin = 10000, thin = 1, numC
 }
 #' @export
 Chib_fitTVP_GSV <- function(y, K, p, y0 = NULL, priors = NULL, inits = NULL,
-                             samples = 1000, burnin = 0, thin = 1,
-                             fix_B = FALSE, fix_Sigma = FALSE,
-                             cal_B = FALSE, cal_Sigma = FALSE){
+                            samples = 1000, burnin = 0, thin = 1,
+                            fix_B = FALSE, fix_Sigma = FALSE,
+                            cal_B = FALSE, cal_Sigma = FALSE){
 
   Y0 <- y0      # p x K matrix
   shortY <- y   # T x K matrix
@@ -90,17 +96,17 @@ Chib_fitTVP_GSV <- function(y, K, p, y0 = NULL, priors = NULL, inits = NULL,
   K <- ncol(shortY)
   Y <- matrixcalc::vec(t(shortY)) # Y stack by obs and time
 
+  is_tv <- inits$is_tv
 
   # samples <- inits$samples
   # burnin <- inits$burnin
   # thin <- inits$thin
-  if (cal_B) {
-    samples <- 120000
-    burnin <- 20000
-    thin <- 10
+  if ((cal_B) & (sum(is_tv) > 0) )  {
+    samples <- 510000
+    burnin <- 10000
+    thin <- 1
   }
   samplesDiv <- floor(samples / thin)
-  is_tv <- inits$is_tv
 
   #is_tv = [1 1 1]'; # n-vector that denotes which equations have TVP; must have the same dim as the VAR
   # e.g., [1 0 1]: eq 1 and 3 have TVP, but eq 2 has const parameters
@@ -165,15 +171,30 @@ Chib_fitTVP_GSV <- function(y, K, p, y0 = NULL, priors = NULL, inits = NULL,
 
   Sigbeta <- inits$SigmaB
   Sigalp <- inits$SigmaA
+  # Sigbetaneg <- inits$SigmaB
+  # Sigalpneg <- inits$SigmaA
   Sigh <- diag(inits$sigma_h, K)
 
   beta0 <- inits$b0
   alp0 <- inits$a0
   h0 <- inits$h0
 
-  beta <- matrix(0, nrow = t_max, ncol = k_beta)
-  alp <- matrix(0, nrow = t_max, ncol = k_alp)
-  h <- kronecker(t(h0), rep(1,t_max))
+  beta <- inits$beta
+  alp <- inits$alp
+  h <- inits$h
+
+  # ## initialize for storage
+  # store_alp <- array(0, dim = c((samples - burnin)%/% thin,t_max,k_alp))
+  # store_beta <- array(0, dim = c((samples - burnin)%/% thin,t_max,k_beta))
+  # store_h <- array(0, dim = c((samples - burnin)%/% thin,t_max,K))
+  # store_Sigbeta <- array(0, dim = c((samples - burnin)%/% thin,k_beta))
+  # store_Sigalp <- array(0, dim = c((samples - burnin)%/% thin,k_alp))
+  # store_Sigh <- array(0, dim = c((samples - burnin)%/% thin,K))
+  # store_beta0 <- array(0, dim = c((samples - burnin)%/% thin,k_beta))
+  # store_alp0 <- array(0, dim = c((samples - burnin)%/% thin,k_alp))
+  # store_h0 <- array(0, dim = c((samples - burnin)%/% thin,K))
+  # store_Sigbetaneg <- array(0, dim = c((samples - burnin)%/% thin,k_beta))
+  # store_Sigalpneg <- array(0, dim = c((samples - burnin)%/% thin,k_alp))
 
   ## MCMC starts here
   set.seed(NULL)
@@ -182,7 +203,7 @@ Chib_fitTVP_GSV <- function(y, K, p, y0 = NULL, priors = NULL, inits = NULL,
 
   lpost <- rep(0, (samples - burnin)%/% thin)
   if (cal_B) lpost <- matrix(0,nrow = (samples - burnin)%/% thin, ncol = K)
-
+  lpost_stable <- rep(0, K)
   for (j in c(1:samples)){
     if(!fix_B) {
       # sample alp0 and beta0 - equation by equation
@@ -192,10 +213,6 @@ Chib_fitTVP_GSV <- function(y, K, p, y0 = NULL, priors = NULL, inits = NULL,
 
       for (ii in 1:K){
         ki <- K*p+1+ii-1 # Number of theta in equation ii
-        B_star <- inits$b0[ count_seqb[[ii]] ]
-        A_star <- inits$a0[ count_seqa[[ii]] ]
-        SigmaB_star <- inits$SigmaB[ count_seqb[[ii]] ]
-        SigmaA_star <- inits$SigmaA[ count_seqa[[ii]] ]
 
         if (ii > 1) {
           X <- cbind(X2, -shortY[,1:(ii-1)])
@@ -217,24 +234,43 @@ Chib_fitTVP_GSV <- function(y, K, p, y0 = NULL, priors = NULL, inits = NULL,
 
           theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
           while (TRUE) {
-            thetai0 <- backsolve( theta.prec.chol,
-                                  backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
-                                             upper.tri = T, transpose = T )
-                                  + rnorm(ki) )
-            ab_sample <- thetai0[1:ki]
-            Sab_sample <- thetai0[(ki+1):(2*ki)]
-            if (all(Sab_sample > 0) ) {
+          thetai0 <- backsolve( theta.prec.chol,
+                                backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
+                                           upper.tri = T, transpose = T )
+                                + rnorm(ki) )
+          ab_sample <- thetai0[1:ki]
+          Sab_sample <- thetai0[(ki+1):(2*ki)]
+             if (all(Sab_sample > 0) ) {
               break
-            }
-          }
+             }
+           }
           beta0[count_seqb[[ii]] ] <- ab_sample[1:k_beta_div_K]
           Sigbeta[count_seqb[[ii]] ] <- Sab_sample[1:k_beta_div_K]^2
+          # Sigbetaneg[count_seqb[[ii]] ] <- Sab_sample[1:k_beta_div_K]
           if ( ii > 1){
             alp0[count_seqa[[ii]] ] <- ab_sample[(k_beta_div_K+1):ki]
             Sigalp[count_seqa[[ii]] ] <- Sab_sample[(k_beta_div_K+1):ki]^2
+            #   Sigalpneg[count_seqa[[ii]] ] <- Sab_sample[(k_beta_div_K+1):ki]
           }
           U2[,ii] <- shortY[,ii] - X %*% ab_sample
 
+          if (cal_B & (j > burnin) & (j %% thin == 0)){
+            B_star <- inits$b0[ count_seqb[[ii]] ]
+            A_star <- inits$a0[ count_seqa[[ii]] ]
+            SigmaB_star <- inits$SigmaB[ count_seqb[[ii]] ]
+            SigmaA_star <- inits$SigmaA[ count_seqa[[ii]] ]
+            ABS_star <- c(B_star, A_star,
+                          sqrt(SigmaB_star), sqrt(SigmaA_star) )
+            b_star <- backsolve( theta.prec.chol,
+                                 backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
+                                            upper.tri = T, transpose = T ))
+
+            lpost[(j - burnin) %/% thin,ii] <- - length(ABS_star) * 0.5 * log(2*pi) + sum(log(diag(theta.prec.chol))) -
+              0.5 * t(ABS_star - b_star) %*% (V_b_prior_inv + crossprod(x.tilde)) %*% (ABS_star - b_star) +
+              - sum(log(ABS_star[(ki+1):(2*ki)]))
+
+
+          }
         } else {
 
           invvol <- as.vector(exp(-h[,ii]/2))
@@ -256,78 +292,89 @@ Chib_fitTVP_GSV <- function(y, K, p, y0 = NULL, priors = NULL, inits = NULL,
           }
           U2[,ii] <- shortY[,ii] - X %*% thetai0
 
+          if (cal_B & (j > burnin) & (j %% thin == 0)){
+            B_star <- inits$b0[ count_seqb[[ii]] ]
+            A_star <- inits$a0[ count_seqa[[ii]] ]
 
+            ABS_star <- c(B_star, A_star)
+            b_star <- backsolve( theta.prec.chol,
+                                 backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
+                                            upper.tri = T, transpose = T ))
+
+            lpost[(j - burnin) %/% thin, ii] <- - length(ABS_star) * 0.5 * log(2*pi) + sum(log(diag(theta.prec.chol))) -
+              0.5 * t(ABS_star - b_star) %*% (V_b_prior_inv + crossprod(x.tilde)) %*% (ABS_star - b_star)
+
+          }
         }
 
 
       }
     }
 
-    if (cal_B & (j > burnin) & (j %% thin == 0)){
-      for (ii in 1:K){
-        B_star <- inits$b0[ count_seqb[[ii]] ]
-        A_star <- inits$a0[ count_seqa[[ii]] ]
-        SigmaB_star <- inits$SigmaB[ count_seqb[[ii]] ]
-        SigmaA_star <- inits$SigmaA[ count_seqa[[ii]] ]
-
-        ki <- K*p+1+ii-1 # Number of theta in equation ii
-
-        if (ii > 1) {
-          X <- cbind(X2, -shortY[,1:(ii-1)])
-        } else {
-          X <- X2
-        }
-        if (is_tv[ii] == 1){
-          # if (ii < 3) {
-          ABS_star <- c(B_star, A_star,
-                        sqrt(SigmaB_star), sqrt(SigmaA_star) )
-
-          thetai <- cbind(beta[, count_seqb[[ii]] ], alp[,count_seqa[[ii]] ])
-
-          invvol <- as.vector(exp(-h[,ii]/2))
-          y.tilde <- as.vector( U1[,ii] ) * invvol
-          x.tilde <- cbind(X, X*thetai) * invvol
-
-          V_b_prior_inv <- diag(1/c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ],
-                                    Sbeta0[ count_seqb[[ii]] ], Salp0[count_seqa[[ii]] ] ))
-          theta.prior.precmean <- c(abeta0[count_seqb[[ii]] ], aalp0[count_seqa[[ii]] ], rep(0,ki) ) /
-            c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ],
-              Sbeta0[ count_seqb[[ii]] ], Salp0[count_seqa[[ii]] ] )
-
-          theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
-          b_star <- backsolve( theta.prec.chol,
-                                backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
-                                           upper.tri = T, transpose = T ))
-
-          lpost[(j - burnin) %/% thin,ii] <- - length(ABS_star) * 0.5 * log(2*pi) + sum(log(diag(theta.prec.chol))) -
-                              0.5 * t(ABS_star - b_star) %*% (V_b_prior_inv + crossprod(x.tilde)) %*% (ABS_star - b_star) +
-                              - sum(log(ABS_star[(ki+1):(2*ki)])) # Jacobian transformation
-
-        } else {
-          ABS_star <- c(B_star, A_star)
-
-          invvol <- as.vector(exp(-h[,ii]/2))
-          y.tilde <- as.vector( U1[,ii] ) * invvol
-          x.tilde <- X * invvol
-
-          V_b_prior_inv <- diag(1/c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ]))
-          theta.prior.precmean <- c(abeta0[count_seqb[[ii]] ], aalp0[count_seqa[[ii]] ] ) /
-            c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ])
-
-          theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
-          b_star <- backsolve( theta.prec.chol,
-                                backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
-                                           upper.tri = T, transpose = T ))
-          lpost[(j - burnin) %/% thin, ii] <- - length(ABS_star) * 0.5 * log(2*pi) + sum(log(diag(theta.prec.chol))) -
-                                0.5 * t(ABS_star - b_star) %*% (V_b_prior_inv + crossprod(x.tilde)) %*% (ABS_star - b_star)
-
-        }
-
-
-      }
-
-    }
-    # matrix(beta0, nrow = K, byrow = T); alp0
+    # if (cal_B & (j > burnin) & (j %% thin == 0)){
+    #   for (ii in 1:K){
+    #     B_star <- inits$b0[ count_seqb[[ii]] ]
+    #     A_star <- inits$a0[ count_seqa[[ii]] ]
+    #     SigmaB_star <- inits$SigmaB[ count_seqb[[ii]] ]
+    #     SigmaA_star <- inits$SigmaA[ count_seqa[[ii]] ]
+    #
+    #     ki <- K*p+1+ii-1 # Number of theta in equation ii
+    #
+    #     if (ii > 1) {
+    #       X <- cbind(X2, -shortY[,1:(ii-1)])
+    #     } else {
+    #       X <- X2
+    #     }
+    #     if (is_tv[ii] == 1){
+    #       # if (ii < 3) {
+    #       ABS_star <- c(B_star, A_star,
+    #                     sqrt(SigmaB_star), sqrt(SigmaA_star) )
+    #
+    #       thetai <- cbind(beta[, count_seqb[[ii]] ], alp[,count_seqa[[ii]] ])
+    #
+    #       invvol <- as.vector(exp(-h[,ii]/2))
+    #       y.tilde <- as.vector( U1[,ii] ) * invvol
+    #       x.tilde <- cbind(X, X*thetai) * invvol
+    #
+    #       V_b_prior_inv <- diag(1/c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ],
+    #                                 Sbeta0[ count_seqb[[ii]] ], Salp0[count_seqa[[ii]] ] ))
+    #       theta.prior.precmean <- c(abeta0[count_seqb[[ii]] ], aalp0[count_seqa[[ii]] ], rep(0,ki) ) /
+    #         c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ],
+    #           Sbeta0[ count_seqb[[ii]] ], Salp0[count_seqa[[ii]] ] )
+    #
+    #       theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
+    #       b_star <- backsolve( theta.prec.chol,
+    #                            backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
+    #                                       upper.tri = T, transpose = T ))
+    #
+    #       lpost[(j - burnin) %/% thin,ii] <- - length(ABS_star) * 0.5 * log(2*pi) + sum(log(diag(theta.prec.chol))) -
+    #         0.5 * t(ABS_star - b_star) %*% (V_b_prior_inv + crossprod(x.tilde)) %*% (ABS_star - b_star) +
+    #         - sum(log(ABS_star[(ki+1):(2*ki)])) # Jacobian transformation
+    #
+    #     } else {
+    #       ABS_star <- c(B_star, A_star)
+    #
+    #       invvol <- as.vector(exp(-h[,ii]/2))
+    #       y.tilde <- as.vector( U1[,ii] ) * invvol
+    #       x.tilde <- X * invvol
+    #
+    #       V_b_prior_inv <- diag(1/c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ]))
+    #       theta.prior.precmean <- c(abeta0[count_seqb[[ii]] ], aalp0[count_seqa[[ii]] ] ) /
+    #         c(Vbeta0[ count_seqb[[ii]] ], Valp0[count_seqa[[ii]] ])
+    #
+    #       theta.prec.chol <- chol( V_b_prior_inv + crossprod(x.tilde) )
+    #       b_star <- backsolve( theta.prec.chol,
+    #                            backsolve( theta.prec.chol, theta.prior.precmean + crossprod( x.tilde, y.tilde ),
+    #                                       upper.tri = T, transpose = T ))
+    #       lpost[(j - burnin) %/% thin, ii] <- - length(ABS_star) * 0.5 * log(2*pi) + sum(log(diag(theta.prec.chol))) -
+    #         0.5 * t(ABS_star - b_star) %*% (V_b_prior_inv + crossprod(x.tilde)) %*% (ABS_star - b_star)
+    #
+    #     }
+    #
+    #
+    #   }
+    #
+    # }
 
     # sample latent alp and beta - equation by equation
     U <- U2
@@ -385,7 +432,7 @@ Chib_fitTVP_GSV <- function(y, K, p, y0 = NULL, priors = NULL, inits = NULL,
       }
 
       Sigh <- diag(mapply( GIGrvg::rgig, n = 1, lambda = - (t_max - 1)*0.5, chi = sse_2,
-                              psi = 1/priors$hyper_h ), nrow = K)
+                           psi = 1/priors$hyper_h ), nrow = K)
 
     }
 
@@ -402,13 +449,66 @@ Chib_fitTVP_GSV <- function(y, K, p, y0 = NULL, priors = NULL, inits = NULL,
                                                  chi = sse_2, psi = 1/priors$hyper_h, log = T))
     }
 
+    # if ((j > burnin) & (j %% thin == 0) ) {
+    #   isave <- (j - burnin) %/% thin
+    #   store_h[isave,,] <- h
+    #   store_alp[isave,,] <- alp
+    #   store_beta[isave,,] <- beta
+    #   store_Sigbeta[isave,] <- Sigbeta
+    #   store_Sigalp[isave,] <- Sigalp
+    #   store_Sigbetaneg[isave,] <- Sigbetaneg
+    #   store_Sigalpneg[isave,] <- Sigalpneg
+    #   store_Sigh[isave,] <- diag(Sigh)
+    #   store_beta0[isave,] <- beta0
+    #   store_alp0[isave,] <- alp0
+    #   store_h0[isave,] <- h0
+    # }
+
+
     if ( j %% 1000 == 0){
       cat(' Iteration ... ', j, '\n')
     }
 
   }
+
   end_time <- Sys.time()
   print( end_time - start_time)
+
+  # if (cal_B){
+  #   for (ii in c(1:K)){
+  #     if (is_tv[ii] == 1){
+  #       mcmc_mean <- apply(cbind(store_beta0[,count_seqb[[ii]]],
+  #                                store_alp0[,count_seqa[[ii]]],
+  #                                store_Sigbetaneg[,count_seqb[[ii]] ],
+  #                                store_Sigalpneg[,count_seqa[[ii]] ] ), 2, mean)
+  #       mcmc_Sigma <- cov(cbind(store_beta0[,count_seqb[[ii]]],
+  #                               store_alp0[,count_seqa[[ii]]],
+  #                               store_Sigbetaneg[,count_seqb[[ii]]],
+  #                               store_Sigalpneg[,count_seqa[[ii]]] ))
+  #       lpost_stable[ii] <-  mvnfast::dmvn(c(inits$b0[count_seqb[[ii]]],
+  #                                            inits$a0[count_seqa[[ii]]],
+  #                                            sqrt(inits$SigmaB[count_seqb[[ii]]]),
+  #                                            sqrt(inits$SigmaA[count_seqa[[ii]]]) ),
+  #                                          mu = mcmc_mean, sigma = mcmc_Sigma, log = TRUE ) -
+  #         sum(log(sqrt(inits$SigmaB[count_seqb[[ii]]] ))) -
+  #         sum(log(sqrt(inits$SigmaA[count_seqa[[ii]]] )))
+  #
+  #     } else {
+  #       mcmc_mean <- apply(cbind(store_beta0[,count_seqb[[ii]]],
+  #                                store_alp0[,count_seqa[[ii]]] ), 2, mean)
+  #       mcmc_Sigma <- cov(cbind(store_beta0[,count_seqb[[ii]]],
+  #                               store_alp0[,count_seqa[[ii]]] ))
+  #       lpost_stable[ii] <-  mvnfast::dmvn(c(inits$b0[count_seqb[[ii]]],
+  #                                            inits$a0[count_seqa[[ii]]]  ),
+  #                                          mu = mcmc_mean, sigma = mcmc_Sigma, log = TRUE )
+  #     }
+  #
+  #
+  #   }
+  #   return(list(lpost_stable = lpost_stable, lpost = lpost))
+  # }
+
+
 
 
   return(lpost)
@@ -479,11 +579,11 @@ ChibLLP_TVP_GSV <- function(Chain, ndraws = 1000, numCores = NULL){
   Vh0 <- 4*matrix(1, nrow = K,ncol = 1)
 
   sum_log_prior <- sum(dgamma(Sigmah_med, shape = 0.5, rate = 0.5 / priors$hyper_h, log = T),
-                                dgamma(SigmaB_med[idx_b_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
-                                dgamma(SigmaA_med[idx_a_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
-                                #dnorm(H0_med, mean = ah0, sd = sqrt(Vh0), log = T),
-                                dnorm(B_med, mean = abeta0, sd = sqrt(Vbeta0), log = T),
-                                dnorm(A_med, mean = aalp0, sd = sqrt(Valp0), log = T) )
+                       dgamma(SigmaB_med[idx_b_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
+                       dgamma(SigmaA_med[idx_a_tv], shape = 0.5, rate = 0.5 / priors$hyper_ab, log = T),
+                       #dnorm(H0_med, mean = ah0, sd = sqrt(Vh0), log = T),
+                       dnorm(B_med, mean = abeta0, sd = sqrt(Vbeta0), log = T),
+                       dnorm(A_med, mean = aalp0, sd = sqrt(Valp0), log = T) )
 
   dpriorABS <- rep(0, K)
   for (ii in c(1:K) ){

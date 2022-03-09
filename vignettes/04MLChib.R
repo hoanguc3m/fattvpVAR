@@ -1,7 +1,7 @@
 library(fattvpVAR)
-numCores = 16
+numCores = 4
 setwd("/Backup/Ongoing/WP11/")
-# setwd("/home/hoanguc3m/Downloads/WP11")
+ setwd("/home/hoanguc3m/Downloads/WP11")
 
 ##########################################################################
 
@@ -91,7 +91,7 @@ load("T011_ML_Chib.RData"); load("T101_ML_Chib.RData"); load("T110_ML_Chib.RData
 
 
 xtable::xtable(
-  round(rbind(c(G000_ML_Chib$LL, G100_ML_Chib$LL, G010_ML_Chib$LL, G001_ML_Chib$LL, G110_ML_Chib$LL, G101_ML_Chib$LL, G011_ML_Chib$LL, G111_ML_Chib$LL),
-              c(T000_ML_Chib$LL, T100_ML_Chib$LL, T010_ML_Chib$LL, T001_ML_Chib$LL, T110_ML_Chib$LL, T101_ML_Chib$LL, T011_ML_Chib$LL, T111_ML_Chib$LL)), digits = 2)
+  round(rbind(c(G000_ML_Chib$CML, G100_ML_Chib$CML, G010_ML_Chib$CML, G001_ML_Chib$CML, G110_ML_Chib$CML, G101_ML_Chib$CML, G011_ML_Chib$CML, G111_ML_Chib$CML),
+              c(T000_ML_Chib$CML, T100_ML_Chib$CML, T010_ML_Chib$CML, T001_ML_Chib$CML, T110_ML_Chib$CML, T101_ML_Chib$CML, T011_ML_Chib$CML, T111_ML_Chib$CML)), digits = 2)
 )
 
