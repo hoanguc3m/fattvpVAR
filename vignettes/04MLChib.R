@@ -1,7 +1,7 @@
 library(fattvpVAR)
 numCores = 4
 setwd("/Backup/Ongoing/WP11/")
- setwd("/home/hoanguc3m/Downloads/WP11")
+#setwd("/home/hoanguc3m/Downloads/WP11")
 
 ##########################################################################
 

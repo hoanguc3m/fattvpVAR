@@ -2,7 +2,9 @@ Package: fattvpVAR
 Type: Package
 Title: Time-varying parameter VAR with Stochastic volatility and fat tails
 Version: 0.1.0
-Authors@R: person("Nguyen", "Hoang", role = c("aut", "cre"), email = "hoang.nguyen@oru.se")
+Author: c(
+    person("Nguyen", "Hoang", role = c("aut", "cre"), email = "hoang.nguyen@oru.se"),
+    person("Karlsson", "Sune", role = "aut" , email = "Sune.Karlsson@oru.se") )
 Maintainer: Hoang Nguyen <hoang.nguyen@oru.se>
 Description: Time-varying parameter VAR with Stochastic volatility and fat tails
 License: License: GPL (>= 2)

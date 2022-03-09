@@ -2,8 +2,8 @@ library(fattvpVAR)
 library(RhpcBLASctl)
 numCores = 4
 blas_set_num_threads(numCores)
-setwd("/Backup/Ongoing/WP11/")
-setwd("/home/hoanguc3m/Downloads/WP11")
+#setwd("/Backup/Ongoing/WP11/")
+#setwd("/home/hoanguc3m/Downloads/WP11")
 load("~/Dropbox/WP11/Code/fattvpVAR/data/Spread.RData")
 
 set.seed(NULL)
@@ -17,10 +17,10 @@ set.seed(NULL)
 # rm(G000_ML_Chib, G000_obj)
 
 
-# inits$is_tv = c(0,0,1); G001_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
-# G001_ML_Chib <- MLChib_TVPGSV(Chain = G001_obj, numCores = numCores)
-# save(G001_ML_Chib, file = paste("G001_ML_Chib_", Sys.time() , ".RData", sep = ""))
-# rm(G001_ML_Chib, G001_obj)
+inits$is_tv = c(0,0,1); G001_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
+G001_ML_Chib <- MLChib_TVPGSV(Chain = G001_obj, numCores = numCores)
+save(G001_ML_Chib, file = paste("G001_ML_Chib_", Sys.time() , ".RData", sep = ""))
+rm(G001_ML_Chib, G001_obj)
 
 # inits$is_tv = c(0,1,0); G010_obj <- fitTVPGaussSV(y, y0, p, priors, inits)
 # G010_ML_Chib <- MLChib_TVPGSV(Chain = G010_obj, numCores = numCores)
@@ -93,10 +93,10 @@ set.seed(NULL)
 # rm(T110_ML_Chib, T110_obj)
 
 
-inits$is_tv = c(1,1,1); T111_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
-T111_ML_Chib <- MLChib_TVPSSV(Chain = T111_obj, numCores = numCores)
-save(T111_ML_Chib, file = paste("T111_ML_Chib_", Sys.time() , ".RData", sep = ""))
-rm(T111_ML_Chib, T111_obj)
+# inits$is_tv = c(1,1,1); T111_obj <- fitTVPStudentSV(y, y0, p, priors, inits)
+# T111_ML_Chib <- MLChib_TVPSSV(Chain = T111_obj, numCores = numCores)
+# save(T111_ML_Chib, file = paste("T111_ML_Chib_", Sys.time() , ".RData", sep = ""))
+# rm(T111_ML_Chib, T111_obj)
 
 #
 #
